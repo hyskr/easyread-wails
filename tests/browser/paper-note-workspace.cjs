@@ -11,9 +11,9 @@ async page => {
       await page.locator('.dock-group:visible .dock-add').first().click();
       await page.locator('.dock-menu:popover-open [data-open=notes]').click();
     }
-    await page.locator('[data-np=paper]').click();
+    await page.evaluate(() => PR.openPaperNote());
     await panel.locator('[data-note-mode=rich]').click();
-    if (!await panel.evaluate(el => el.classList.contains('pn-expanded'))) await panel.locator('[data-note-expand]').click();
+    if (!await panel.evaluate(el => el.classList.contains('pn-expanded'))) await page.locator('[data-note-expand]').click();
     await panel.locator('[data-note-focus=both]').click();
   };
   const saved = async body => {
@@ -79,7 +79,7 @@ async page => {
     if (await menu.isVisible()) await page.keyboard.press('Escape');
     await setBody(original);
     await setZoom(originalZoom);
-    if (await panel.evaluate(el => el.classList.contains('pn-expanded'))) await panel.locator('[data-note-expand]').click();
+    if (await panel.evaluate(el => el.classList.contains('pn-expanded'))) await page.locator('[data-note-expand]').click();
     await cdp.detach();
   }
 }

@@ -6,7 +6,7 @@ const { test } = require("node:test");
 
 function reader() {
   const events = { panel: {}, window: {}, document: {} }, commits = [];
-  const textarea = { id: "paperNote", value: "", matches: () => false };
+  const textarea = { id: "paperNote", value: "", matches: () => false, closest: () => panel };
   const panel = { addEventListener: (type, fn) => events.panel[type] = fn };
   const PR = {
     state: { reader: {}, paper: {}, discussion: {} },
@@ -20,7 +20,7 @@ function reader() {
     document: { hidden: true, addEventListener: (type, fn) => events.document[type] = fn },
   });
   PR.renderNotesPanel = () => {};
-  return { PR, events, textarea, commits, input(text) { textarea.value = text; events.panel.input({ target: textarea }); } };
+  return { PR, events, textarea, commits, input(text) { textarea.value = text; events.document.input({ target: textarea }); } };
 }
 
 test("leaving, hiding and switching panels save the current editor body before the debounce", () => {
@@ -38,13 +38,14 @@ test("leaving, hiding and switching panels save the current editor body before t
 });
 
 test("export and tab switching flush the latest text synchronously", () => {
-  for (const selector of ["[data-np]", "[data-np-act]"]) {
+  for (const selector of ["switch", "[data-np-act]"]) {
     const r = reader();
     let exported;
     r.PR.openExport = () => exported = r.PR.state.reader.paper_note.body;
     r.input("最后一行");
     const button = { dataset: { np: "notes", npAct: "md" } };
-    r.events.panel.click({ target: { closest: s => s === selector ? button : null } });
+    if (selector === "switch") { r.PR.openSide = () => {}; r.PR.openPaperNote(); }
+    else r.events.document.click({ target: { closest: s => s === selector || s.includes("#annotationspanel") ? button : null } });
     assert.equal(r.PR.state.reader.paper_note.body, "最后一行");
     if (selector === "[data-np-act]") assert.equal(exported, "最后一行");
   }

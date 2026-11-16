@@ -59,7 +59,7 @@ def run():
                     }''')
                     assert quote == QUOTE, quote
                     page.locator('#selbar.open [data-s="note"]').click()
-                    textarea = page.locator('#notespanel .card textarea')
+                    textarea = page.locator('#annotationspanel .card textarea')
                     textarea.fill(NOTE)
                     textarea.press('Escape')
                     page.wait_for_function('PR.store.pending === 0')
@@ -95,7 +95,9 @@ def run():
                     if STYLE_URL in CASES[case]:
                         expect(frame.locator('link[rel="stylesheet"]')).to_have_attribute('href', STYLE_URL)
                     page.locator('#bar [data-act="dock"]').click()
-                    card = page.locator('#notespanel .card[data-note="' + note['id'] + '"]')
+                    page.locator(".dock-group:visible .dock-add").first.click()
+                    page.locator('.dock-menu:popover-open [data-open="annotations"]').click()
+                    card = page.locator('#annotationspanel .card[data-note="' + note['id'] + '"]')
                     expect(card).to_contain_text(NOTE)
                     # The card must scroll from the top back to the original sentence.
                     page.evaluate('window.scrollTo({top:0, behavior:"instant"})')

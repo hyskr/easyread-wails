@@ -111,7 +111,7 @@
     if (e.target.closest("#blockbar, #selbar, #popover, .menu")) return;
     const blk = e.target.closest("#paper .blk");
     if (!blk || e.target.closest("a, button, textarea, mark, .editor-wrap, input") || getSelection().toString()) {
-      if (!blk && !e.target.closest("#margin, #notespanel, #pageview, .topbar")) PR.setCurrent(null);
+      if (!blk && !e.target.closest("#margin, #annotationspanel, #notespanel, #pageview, .topbar")) PR.setCurrent(null);
       return;
     }
     if (current === blk.dataset.id && bar().classList.contains("open")) PR.hideBlockbar();

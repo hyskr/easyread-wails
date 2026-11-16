@@ -2,9 +2,9 @@
 (function (PR) {
   "use strict";
   const dock = PR.$("#readerDock"), toggle = PR.$('[data-act="dock"]');
-  const names = { pages: "PDF", gallery: PR.t("图表"), notes: PR.t("笔记"), map: PR.t("思维导图"), chat: PR.t("问 AI") };
+  const names = { pages: "PDF", gallery: PR.t("图表"), annotations: PR.t("批注"), notes: PR.t("论文笔记"), map: PR.t("思维导图"), chat: PR.t("问 AI") };
   const isResource = key => key === "map" || key === "gallery" || key.startsWith("fig:");
-  const views = new Map([["pages", PR.$("#pageview")], ["notes", PR.$("#notespanel")], ["chat", PR.$("#chatpanel")]]);
+  const views = new Map([["pages", PR.$("#pageview")], ["notes", PR.$("#notespanel")], ["annotations", PR.$("#annotationspanel")], ["chat", PR.$("#chatpanel")]]);
   const MIME = "application/x-easyread-panel", MEDIA = "application/x-easyread-media";
   let current = 0, shown = new Set(), ratio = 50;
   const divider = document.createElement("div");
@@ -48,7 +48,7 @@
   }
   function draw() {
     const next = new Set(dock.hidden ? [] : groups.map(g => g.active).filter(Boolean));
-    if (shown.has("notes") && !next.has("notes")) PR.finishPanelNote?.();
+    if ((shown.has("notes") && !next.has("notes")) || (shown.has("annotations") && !next.has("annotations"))) PR.finishPanelNote?.();
     const previous = shown; shown = next;
     for (const [key, node] of views) node.hidden = !next.has(key);
     groups.forEach(g => {
@@ -79,7 +79,8 @@
     PR.side = dock.hidden ? null : groups[current].active;
     toggle.setAttribute("aria-expanded", String(!dock.hidden));
     PR.setSideSpace(!dock.hidden);
-    if (next.has("notes") && !previous.has("notes")) PR.renderNotesPanel();
+    if ((next.has("notes") && !previous.has("notes")) || (next.has("annotations") && !previous.has("annotations"))) PR.renderNotesPanel();
+    PR.paperNoteEditor?.placeControls();
     if (next.has("pages") && !previous.has("pages") && !(PR.$(".pv-scroll .pv-page img")?.getAttribute("src"))) PR.syncPage(true);
     for (const key of next) if (isResource(key)) PR.renderDockResource(key, view(key));
   }
@@ -97,6 +98,17 @@
     if (!key) { dock.hidden = true; draw(); return; }
     const index = owner(key);
     place(key, index < 0 ? current : index);
+  };
+  PR.openNotesAndMap = () => {
+    PR.openPaperNote();
+    const noteGroup = owner("notes");
+    setDirection(false);
+    place("map", 1 - noteGroup);
+    current = noteGroup;
+  };
+  PR.openNoteBesideMap = () => {
+    if (PR.dockVisible("map") && !PR.dockVisible("notes")) place("notes", 1 - owner("map"));
+    PR.openPaperNote();
   };
   PR.closeDockTab = key => {
     const i = owner(key);
@@ -119,20 +131,33 @@
     const el = e.target.closest(".dock-group");
     if (el) { current = Number(el.dataset.group); PR.side = groups[current].active; }
   });
+  function menuItem(label, action, selected = false) {
+    const b = document.createElement("button"); b.type = "button";
+    const name = document.createElement("span"); name.className = "dock-menu-name"; name.textContent = label;
+    const key = document.createElement("span"); key.className = "dock-menu-key"; key.textContent = PR.keyOf(action);
+    const state = document.createElement("span"); state.className = "dock-menu-state"; state.setAttribute("aria-hidden", "true");
+    if (selected) state.innerHTML = PR.icon("check", "sm");
+    b.append(name, key, state); return b;
+  }
+  PR.splitDock = axis => {
+    const g = groups[current];
+    if (!g.active) return;
+    setDirection(axis === "columns");
+    if (divider.hidden && g.tabs.length > 1) place(g.active, 1 - current);
+    divider.focus();
+  };
   function togglePicker(g) {
     if (g.menu.matches(":popover-open")) { g.menu.hidePopover(); return; }
-    g.menu.firstElementChild.replaceChildren(...Object.keys(names).filter(allowed).map(key => {
-      const b = document.createElement("button"); b.type = "button"; b.dataset.open = key;
-      const label = document.createElement("span"); label.textContent = title(key); b.append(label);
-      if (owner(key) >= 0) b.insertAdjacentHTML("beforeend", PR.icon("check", "sm"));
-      return b;
+    const list = g.menu.firstElementChild;
+    list.replaceChildren(...Object.keys(names).filter(allowed).map(key => {
+      const b = menuItem(title(key), {annotations:"notes", notes:"paperNotes", map:"mindmap", gallery:"gallery", pages:"pages", chat:"chat"}[key], owner(key) >= 0);
+      b.dataset.open = key; return b;
     }));
-    if (g.tabs.length > 1 || !divider.hidden) {
-      for (const [axis, label] of [["columns", PR.t("左右分栏")], ["rows", PR.t("上下分栏")]]) {
-        const b = document.createElement("button"); b.type = "button";
-        b.dataset.split = axis; b.textContent = label;
-        g.menu.firstElementChild.append(b);
-      }
+    const separator = document.createElement("div"); separator.className = "dock-menu-separator"; separator.setAttribute("role", "separator"); list.append(separator);
+    const pair = menuItem(PR.t("笔记与导图"), "notesAndMap"); pair.dataset.notePair = ""; list.append(pair);
+    for (const [axis, label, action] of [["columns", PR.t("左右分栏"), "dockColumns"], ["rows", PR.t("上下分栏"), "dockRows"]]) {
+      const b = menuItem(label, action); b.dataset.split = axis;
+      b.disabled = g.tabs.length < 2 && divider.hidden; list.append(b);
     }
     g.menu.showPopover({ source: g.add });
     const r = g.add.getBoundingClientRect(), m = g.menu.getBoundingClientRect();
@@ -140,16 +165,23 @@
     g.menu.style.top = (r.bottom + m.height + 6 <= innerHeight ? r.bottom + 4 : Math.max(6, r.top - m.height - 4)) + "px";
     g.menu.querySelector("button").focus({ preventScroll: true });
   }
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape" || e.isComposing) return;
+    const group = groups.find(g => g.menu.matches(":popover-open"));
+    if (!group) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    group.menu.hidePopover();
+    group.add.focus({ preventScroll: true });
+  }, true);
   dock.addEventListener("click", e => {
     const group = e.target.closest(".dock-group"); if (!group) return;
     const index = Number(group.dataset.group), g = groups[index];
     if (e.target.closest(".dock-add")) { e.preventDefault(); return togglePicker(g); }
+    if (e.target.closest("[data-note-pair]")) { g.menu.hidePopover(); PR.openNotesAndMap(); return; }
     const split = e.target.closest("[data-split]");
     if (split && g.menu.contains(split)) {
       g.menu.hidePopover();
-      setDirection(split.dataset.split === "columns");
-      if (divider.hidden) place(g.active, 1 - index);
-      divider.focus(); return;
+      current = index; PR.splitDock(split.dataset.split); return;
     }
     const choice = e.target.closest("[data-open]");
     if (choice && g.menu.contains(choice)) {

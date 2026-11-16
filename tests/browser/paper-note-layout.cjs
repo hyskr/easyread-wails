@@ -6,10 +6,10 @@ async page => {
     await page.locator('.dock-group:visible .dock-add').first().click();
     await page.locator('.dock-menu:popover-open [data-open=notes]').click();
   }
-  await page.locator('[data-np=paper]').click();
+  await page.evaluate(() => PR.openPaperNote());
   const panel = page.locator('#notespanel'), workspace = panel.locator('.pn-workspace');
   const note = await panel.locator('#paperNote').inputValue();
-  if (!await panel.evaluate(el => el.classList.contains('pn-expanded'))) await panel.locator('[data-note-expand]').click();
+  if (!await panel.evaluate(el => el.classList.contains('pn-expanded'))) await page.locator('[data-note-expand]').click();
   await panel.locator('[data-note-layout=side]').click();
   await panel.locator('[data-note-focus=both]').click();
   const writing = panel.locator('.pn-writing'), map = panel.locator('.pn-mindmap'), divider = panel.locator('.pn-divider');
@@ -34,10 +34,10 @@ async page => {
   await page.setViewportSize({ width: 600, height: 900 });
   check(await divider.getAttribute('aria-orientation') === 'horizontal', 'Narrow viewport must stack panes');
   check(await workspace.evaluate(el => el.scrollWidth <= el.clientWidth), 'Narrow workspace overflows');
-  await panel.locator('[data-note-expand]').focus(); await page.keyboard.press('Escape');
+  await page.locator('[data-note-expand]').focus(); await page.keyboard.press('Escape');
   check(!await panel.evaluate(el => el.classList.contains('pn-expanded')), 'Escape did not exit full screen');
   check(await panel.locator('#paperNote').inputValue() === note, 'Layout changes modified note content');
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await panel.locator('[data-note-expand]').click();
+  await page.locator('[data-note-expand]').click();
   return { sideBySide: true, drag: true, keyboard: true, focusViews: true, narrowStack: true, escape: true, contentPreserved: true };
 }

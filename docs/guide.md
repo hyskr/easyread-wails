@@ -212,3 +212,12 @@ MIT。公式渲染用 [KaTeX](https://katex.org)（MIT）。
 - [@Zhoushuren12](https://github.com/Zhoushuren12) — 文献库后台刷新时列表不再上下跳动（[#43](https://github.com/Edwardxlai/easyread/pull/43)）
 - [@02Ychase](https://github.com/02Ychase) — 论文里有代码时翻译不再整批失败（[#44](https://github.com/Edwardxlai/easyread/pull/44)）；删除正在翻译的论文后后台队列不再卡住（[#56](https://github.com/Edwardxlai/easyread/pull/56)）
 - [@88lin](https://github.com/88lin) — 图按原页大小显示，不再一律撑满版心（[#47](https://github.com/Edwardxlai/easyread/pull/47)）
+
+
+### Wails 1.5.1 侧栏与更新
+
+批注、论文笔记、思维导图是独立标签；通过侧栏“＋”添加。“笔记与导图”一次打开上下分屏，布局区可切换左右或上下分栏。论文笔记的导出、AI 和全屏操作位于标签栏，格式工具与预览／Markdown 位于同一行。只滚动笔记正文，操作栏保持固定。笔记和导图支持双向定位，引用段落保留关联标记。打开“＋”菜单时，Esc 只关闭菜单并返回“＋”按钮。
+
+默认快捷键：PDF O、图表 I、批注 M、论文笔记 S、思维导图 G、问 AI A、笔记与导图 V、左右分栏 H、上下分栏 U。可在设置中修改；编辑文字时不会触发这些单键操作。
+
+在设置中开始下载更新后，可以关闭设置继续阅读。下载与解压完成后，应用保存笔记并自动重启安装；保存失败时不继续退出。已下载的更新包仍然保留。

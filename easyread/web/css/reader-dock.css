@@ -63,3 +63,26 @@ body.side-open.np-open { --side-w: inherit; }
 }
 @media (max-width: 760px) { #readerDock { width: 100vw; } }
 @media print { #readerDock { display: none !important; } }
+
+#annotationspanel { display: flex; flex-direction: column; overflow: hidden; }
+.dock-head > .pn-display-bar { order: 3; margin: 0 0 0 auto; flex: 0 0 auto; gap: 2px; }
+.dock-head > .pn-display-bar .pn-view-controls { display: none; }
+.dock-head > .pn-display-bar .btn { padding: 3px 5px; font-size: 12px; }
+.dock-head > .pn-display-bar [data-note-expand] { width: 26px; height: 26px; padding: 4px; }
+.dock-menu .menu-list kbd { margin-left: auto; padding-left: 18px; color: var(--ink-3); font: 12px var(--ui); }
+.dock-menu .menu-list kbd + svg { margin-left: 8px; }
+
+/* Every row keeps the same label, shortcut and selection columns. */
+.dock-menu .menu-list { min-width: 224px; padding: 5px; }
+.dock-menu .menu-list button { display: grid; grid-template-columns: minmax(0, 1fr) 28px 18px; align-items: center; column-gap: 12px; height: 34px; padding: 0 10px; border-radius: 5px; }
+.dock-menu-name { text-align: left; white-space: nowrap; }
+.dock-menu-key { text-align: right; font: 12px/1 var(--ui); color: var(--ink-3); }
+.dock-menu-state { display: flex; align-items: center; justify-content: center; width: 18px; }
+.dock-menu .menu-list .dock-menu-state svg { margin: 0; width: 14px; height: 14px; }
+.dock-menu-separator { height: 1px; background: var(--rule); margin: 5px 6px; }
+.dock-menu .menu-list button:focus-visible { outline: none; background: var(--accent-soft); box-shadow: inset 2px 0 var(--accent); }
+.dock-head > .pn-display-bar { align-items: center; gap: 6px; }
+.dock-head > .pn-display-bar .nh-btns { display: flex; align-items: center; gap: 6px; }
+.dock-head > .pn-display-bar .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; min-height: 28px; margin: 0; padding: 0 6px; font: 400 13px/1 var(--ui); }
+.dock-head > .pn-display-bar .btn svg { flex: none; width: 16px; height: 16px; }
+.dock-head > .pn-display-bar [data-note-expand] { width: 28px; height: 28px; padding: 0; }

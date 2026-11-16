@@ -23,7 +23,7 @@ module.exports = async function readerDock(page) {
   assert.ok(pdf.x < note.x && Math.abs(pdf.y - note.y) < 2, 'PDF and notes are side by side');
   await groups.last().locator('[data-key=notes]').dragTo(groups.first().locator('.dock-head'));
   await grip.dblclick();
-  await page.locator('#notespanel [data-np=paper]').click();
+  await page.evaluate(() => PR.openPaperNote());
   const original = await page.locator('#paperNote').inputValue();
   assert.equal(await page.locator('#pnMindmap').isVisible(), false, 'The sidebar note is writing-only');
   await page.locator('.dock-tab[data-key=notes]').dragTo(groups.first(), { targetPosition: { x: 120, y: 805 } });

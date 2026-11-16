@@ -14,7 +14,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var version = "1.5.0"
+var version = "1.5.1"
 
 type downloadProgress struct {
 	app             *App
@@ -69,7 +69,13 @@ func (a *App) cachedUpdate() string {
 	}
 	return best
 }
-func (a *App) DownloadUpdate() { a.checkUpdate(true, true) }
+func (a *App) DownloadUpdate() {
+	if !a.updating.CompareAndSwap(false, true) {
+		return
+	}
+	a.updateProgress("正在后台下载，完成后自动重启", 0, 0)
+	go a.runUpdate(true, true)
+}
 func (a *App) InstallUpdate() error {
 	v := a.cachedUpdate()
 	if v == "" {
@@ -93,6 +99,9 @@ func (a *App) checkUpdate(manual, download bool) {
 	if !a.updating.CompareAndSwap(false, true) {
 		return
 	}
+	a.runUpdate(manual, download)
+}
+func (a *App) runUpdate(manual, download bool) {
 	defer a.updating.Store(false)
 	if manual {
 		a.updateProgress("正在检查更新", 0, 0)
@@ -160,7 +169,7 @@ func (a *App) checkUpdate(manual, download bool) {
 		return
 	}
 	if a.cachedUpdate() == newVersion {
-		a.updateProgress("更新已下载，可重启安装", 0, 0)
+		a.installDownloadedUpdate()
 		return
 	}
 	dir := filepath.Join(updateCache(), newVersion)
@@ -215,8 +224,13 @@ func (a *App) checkUpdate(manual, download bool) {
 		fail(err)
 		return
 	}
-	a.updateProgress("更新已下载，可重启安装", 0, 0)
+	a.installDownloadedUpdate()
 
+}
+func (a *App) installDownloadedUpdate() {
+	if err := a.InstallUpdate(); err != nil {
+		a.updateProgress("安装更新失败："+err.Error(), 0, 0)
+	}
 }
 func (a *App) launchInstaller() error {
 	a.installMu.Lock()

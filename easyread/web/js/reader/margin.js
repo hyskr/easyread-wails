@@ -298,9 +298,9 @@
     PR.$$(sel).forEach((m) => m.classList.toggle("active", on));
   }
   document.addEventListener("mouseover", (e) => {
-    const card = e.target.closest && e.target.closest("#margin .card, #notespanel .card");
+    const card = e.target.closest && e.target.closest("#margin .card, #annotationspanel .card");
     if (card && !card.classList.contains("linked")) { PR.$$(".card.linked").forEach((c) => link(c, false)); link(card, true); }
-    if (!card && e.target.closest && !e.target.closest("#margin, #notespanel")) PR.$$(".card.linked").forEach((c) => link(c, false));
+    if (!card && e.target.closest && !e.target.closest("#margin, #annotationspanel, #notespanel")) PR.$$(".card.linked").forEach((c) => link(c, false));
   });
 
   PR.flashCard = function (id) {

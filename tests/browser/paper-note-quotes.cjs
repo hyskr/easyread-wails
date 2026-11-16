@@ -1,6 +1,6 @@
 async page => {
 
- if (!await page.locator('body').evaluate(el => el.classList.contains('np-open'))) await page.getByRole('button',{name:'笔记',exact:true}).click(); await page.locator('[data-np=paper]').click();
+ await page.evaluate(() => PR.openPaperNote());
  await page.locator('[data-note-mode=source]').click();
  const original = await page.locator('#paperNote').inputValue();
  const anchor = await page.locator('#paper .blk').first().getAttribute('data-id');

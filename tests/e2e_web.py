@@ -175,14 +175,14 @@ def run():
                 # Native paragraph -> note editor; the blog stays visible next to the panel.
                 select(start='second', last=10)
                 page.wait_for_selector('#selbar.open'); page.locator('#selbar [data-s="question"]').click()
-                page.locator('#notespanel .card textarea').fill('这里的基线是否可比？')
-                page.locator('#notespanel .card textarea').press('Escape'); saved()
+                page.locator('#annotationspanel .card textarea').fill('这里的基线是否可比？')
+                page.locator('#annotationspanel .card textarea').press('Escape'); saved()
                 question = next(n for n in ws.load('reader')['notes'].values() if n.get('body') == '这里的基线是否可比？')
                 assert question['kind'] == 'question'
                 assert page.locator('#webSnapshot').is_visible()
                 assert page.locator('#webSnapshot').bounding_box()['width'] < 1440
                 # Select native text -> shared AI chat. Only the transport is stubbed, never the action/ref pipeline.
-                page.locator('#notespanel [data-np-act="close"]').click()
+                page.locator('.dock-tab-close[data-close="annotations"]').click()
                 ai_quote = select(start='second', last=12)
                 page.wait_for_selector('#selbar.open'); page.locator('#selbar [data-s="chat"]').click()
                 page.wait_for_selector('#chatInput')

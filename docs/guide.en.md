@@ -166,3 +166,12 @@ Screenshots use a demonstration library. The Japanese sample translates the abst
 - [@Zhoushuren12](https://github.com/Zhoushuren12) — the library list no longer jumps while refreshing in the background ([#43](https://github.com/Edwardxlai/easyread/pull/43))
 - [@02Ychase](https://github.com/02Ychase) — translating papers with code listings no longer fails whole batches ([#44](https://github.com/Edwardxlai/easyread/pull/44)); deleting a paper mid-translation no longer stalls the background queue ([#56](https://github.com/Edwardxlai/easyread/pull/56))
 - [@88lin](https://github.com/88lin) — figures display at their size on the original page instead of always filling the column ([#47](https://github.com/Edwardxlai/easyread/pull/47))
+
+
+### Wails 1.5.1 sidebar and updates
+
+Annotations, paper notes and the mind map have separate tabs. Add them with the sidebar + menu. “Notes and map” opens a vertical split; the layout commands switch between columns and rows. Note actions stay in the tab header, while formatting and rich-text/Markdown controls share one row. Only the note body scrolls. Notes and map nodes navigate to each other; source references retain their markers. Escape closes the + menu first and returns focus to its button.
+
+Default shortcuts: PDF O, figures I, annotations M, paper notes S, mind map G, AI chat A, notes and map V, columns H, rows U. Customize them in Settings. Single-key shortcuts do not run while editing text.
+
+After starting an update download, close Settings and continue reading. When downloading and extraction finish, the app saves notes and restarts to install. A failed save stops quitting. Downloaded packages remain cached.

@@ -15,10 +15,12 @@
       const text = quote.textContent.trim().slice(0, 80);
       references.set(anchor, [...(references.get(anchor) || []), text]);
     }
+    PR.$$("#paper .pn-has-source").forEach(el => el.classList.remove("pn-has-source"));
     PR.$$("#paper .pn-source-links").forEach(el => el.remove());
     for (const [anchor, count] of counts) {
       const block = document.getElementById("b-" + anchor);
       if (!block) continue;
+      block.classList.add("pn-has-source");
       const row = document.createElement("div"); row.className = "pn-source-links";
       const button = document.createElement("button"); button.className = "btn sm";
       button.dataset.paperNoteSource = anchor;
@@ -30,6 +32,8 @@
   const refreshSoon = PR.debounce(refresh, 120);
   PR.on("rendered", refresh);
   PR.on("block-rendered", refresh);
+  PR.on("paper-chunk", () => requestAnimationFrame(refreshSoon));
+  PR.on("remote", refreshSoon);
   PR.on("reader", op => { if (!op || op.op === "paper_note") refreshSoon(); });
   PR.$("#notespanel").addEventListener("input", e => { if (e.target.id === "paperNote") refreshSoon(); });
   PR.$("#paper").addEventListener("click", e => {

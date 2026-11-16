@@ -65,6 +65,10 @@ function MoreTools({ editor, onMath }) {
           </CardBody></Card>
         ) : (
           <Card><CardBody><ButtonGroup orientation="vertical">
+            <UndoRedoButton action="undo" text={PR.t('撤销')} aria-label={PR.t('撤销')} onClick={close} />
+            <UndoRedoButton action="redo" text={PR.t('重做')} aria-label={PR.t('重做')} onClick={close} />
+            <MarkButton editor={editor} type="italic" text={PR.t('斜体')} aria-label={PR.t('斜体')} showTooltip={false} onClick={close} />
+            <MarkButton editor={editor} type="underline" text={PR.t('下划线')} aria-label={PR.t('下划线')} showTooltip={false} onClick={close} />
             <input ref={imageInput} type="file" accept="image/*" multiple hidden aria-label={PR.t('上传笔记图片')} onChange={insertImages} />
             <Button type="button" data-style="ghost" onClick={() => imageInput.current?.click()}>
               <ImagePlusIcon className="tiptap-button-icon" /><span className="tiptap-button-text">{PR.t('插入图片')}</span>
@@ -98,19 +102,12 @@ export function mountNoteToolbar(element, editor, onMath) {
     <EditorContext.Provider value={{ editor }}>
       <Toolbar aria-label={PR.t('文字格式')}>
         <ToolbarGroup>
-          <UndoRedoButton action="undo" aria-label={PR.t('撤销')} tooltip={PR.t('撤销')} />
-          <UndoRedoButton action="redo" aria-label={PR.t('重做')} tooltip={PR.t('重做')} />
-        </ToolbarGroup>
-        <ToolbarSeparator />
-        <ToolbarGroup>
           <HeadingDropdownMenu portal levels={[1, 2, 3, 4, 5, 6]} aria-label={PR.t('段落格式')} tooltip={PR.t('段落格式')} />
           <ListDropdownMenu portal types={['bulletList', 'orderedList', 'taskList']} aria-label={PR.t('列表')} tooltip={PR.t('列表')} />
         </ToolbarGroup>
         <ToolbarSeparator />
         <ToolbarGroup>
           <MarkButton type="bold" aria-label={PR.t('粗体')} tooltip={PR.t('粗体')} />
-          <MarkButton type="italic" aria-label={PR.t('斜体')} tooltip={PR.t('斜体')} />
-          <MarkButton type="underline" aria-label={PR.t('下划线')} tooltip={PR.t('下划线')} />
           <ColorHighlightPopover aria-label={PR.t('高亮')} tooltip={PR.t('高亮')} colors={[
             { label: PR.t('绿色高亮'), value: 'var(--tt-color-highlight-green)', border: 'var(--tt-color-highlight-green-contrast)' },
             { label: PR.t('蓝色高亮'), value: 'var(--tt-color-highlight-blue)', border: 'var(--tt-color-highlight-blue-contrast)' },

@@ -7,6 +7,8 @@
       mode: () => PR.setPref("mode", PR.prefs.mode === "bi" ? "zh" : "bi"),
       toc: () => PR.toggleDrawer(null, "toc"),
       fontUp: () => PR.bumpFont(1), fontDown: () => PR.bumpFont(-1), fontReset: () => PR.resetType(),
+      paperNotes: () => PR.openPaperNote(), mindmap: () => PR.openSide("map"), gallery: () => PR.openSide("gallery"),
+      notesAndMap: () => PR.openNotesAndMap(), dockColumns: () => PR.splitDock("columns"), dockRows: () => PR.splitDock("rows"),
       pages: () => PR.togglePages(), notes: () => PR.toggleNotesPanel(),
       chat: () => { const b = (PR.currentBlock && PR.currentBlock()) || PR.readingBlock(); PR.blockById[b] ? PR.chatAsk({ anchor: b }) : PR.toggleChat(); },
       pagePrev: () => PR.pageStep(-1), pageNext: () => PR.pageStep(1),

@@ -1,15 +1,24 @@
 /* Figures use their existing paper reference. The map reads the same note as the editor. */
 (function (PR) {
   "use strict";
-  let map, lastBody;
+  let map, lastBody, mapHost;
   function drawMap(node) {
     const text = PR.paperNoteEditor.getBody() ?? PR.state.reader.paper_note?.body ?? "";
     if (map && lastBody === text) return;
     lastBody = text;
+    mapHost = node;
     if (!map) {
       node.innerHTML = '<p class="hint"></p><svg class="dock-map" aria-label="' + PR.t("思维导图") + '"></svg>';
       node.firstElementChild.textContent = PR.t("在论文笔记里写下标题和内容，思维导图会自动出现在这里。");
       map = PR.noteLibraries.Markmap.create(node.querySelector("svg"), { duration: 0, maxWidth: 220 });
+      node.addEventListener("click", event => {
+        const item = event.target.closest(".markmap-node");
+        if (!item || event.target.closest("circle")) return;
+        event.preventDefault(); event.stopPropagation();
+        const selected = map.svg.select(() => item).datum();
+        PR.openNoteBesideMap();
+        PR.paperNoteEditor.selectMapNode(selected, map);
+      });
       new ResizeObserver(() => { if (node.clientHeight && lastBody?.trim()) map.fit(); }).observe(node);
     }
     node.querySelector("p").hidden = !!text.trim();
@@ -25,6 +34,14 @@
     const tree = PR.noteLibraries.toMindMap(doc, meta.short_zh || meta.title_zh || meta.title_en || PR.t("论文笔记"));
     map.setData(tree).then(() => { if (lastBody === text && node.clientHeight) map.fit(); });
   }
+  PR.on("paper-note-selection", async ({position, body}) => {
+    if (!map || !mapHost?.clientHeight || lastBody !== body) return;
+    const current = map, match = PR.noteLibraries.findMapNode(map.state.data, position);
+    if (!match) return;
+    for (const ancestor of match.ancestors) if (ancestor.payload?.fold) await current.toggleNode(ancestor);
+    if (current !== map) return;
+    await current.setHighlight(match.node); await current.ensureVisible(match.node);
+  });
   const lastFigure = new WeakMap();
   function drawFigure(block, node, lazy = false) {
     if (!block) { lastFigure.delete(node); node.textContent = PR.t("图表已变化或移除"); return; }

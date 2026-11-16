@@ -74,7 +74,7 @@
     PR.renderNotesPanel();
   }
 
-  PR.$("#notespanel").addEventListener("click", async (e) => {
+  document.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-nh]");
     if (!b) return;
     const act = b.dataset.nh;

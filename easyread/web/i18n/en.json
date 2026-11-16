@@ -1772,5 +1772,6 @@
   "打开原网页": "Open original web page",
   "阅读排版": "Reading layout",
   "EasyRead 风格": "EasyRead style",
-  "在论文笔记里写下标题和内容，思维导图会自动出现在这里。": "Add headings and text to your paper notes to see the mind map here."
+  "在论文笔记里写下标题和内容，思维导图会自动出现在这里。": "Add headings and text to your paper notes to see the mind map here.",
+ "可以关闭设置继续阅读；更新将在后台下载，完成后保存笔记并自动重启。更新包会保留。": "Continue reading while the update downloads in the background. When ready, your notes are saved and the app restarts automatically. Downloaded packages are kept."
 }
