@@ -1,12 +1,12 @@
 # 手动同步上游
 
-Go/Wails 主分支：`main`，历史开发分支：`feat/wails-desktop`，仓库：`hyskr/easyread`。
+Go/Wails 主分支：`main`，历史开发分支：`feat/wails-desktop`，仓库：`hyskr/easyread-wails`。
 上游：`Edwardxlai/easyread`。本项目不配置定时同步。
 
 ## 同步步骤
 
 1. 先保存当前改动，确认 `git status` 干净。
-2. `git fetch origin main`，其中 origin 指向 Edwardxlai/easyread；fork 指向 hyskr/easyread。
+2. `git fetch origin main`，其中 origin 指向 Edwardxlai/easyread；fork 指向 hyskr/easyread-wails。
 3. `git log --oneline HEAD..origin/main` 查看上游新增提交。
 4. 在 Wails 分支执行 `git merge origin/main`，保留 Wails 原生桥接与打包配置；对桌面协议、退出保存、导出和后端启动的冲突逐项处理。
 5. 运行 `node --test tests/web/test_*.cjs tests/desktop/test_*.cjs`，以及本次变化涉及的 Python 测试。

@@ -9,7 +9,7 @@ permissions:
   contents: write
 jobs:
   macos:
-    if: github.repository == 'hyskr/easyread'
+    if: github.repository == 'hyskr/easyread-wails'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

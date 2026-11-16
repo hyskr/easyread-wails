@@ -1,6 +1,6 @@
 # EasyRead
 
-本仓库是 [EasyRead 上游](https://github.com/Edwardxlai/easyread) 的 **Go / Wails 桌面版**。默认启动和构建使用 Wails；[下载 Wails](https://github.com/hyskr/easyread/releases/latest) · [手动同步上游](docs/upstream-sync.md)。
+本仓库是 [EasyRead 上游](https://github.com/Edwardxlai/easyread) 的 **Go / Wails 桌面版**。默认启动和构建使用 Wails；[下载 Wails](https://github.com/hyskr/easyread-wails/releases/latest) · [手动同步上游](docs/upstream-sync.md)。
 
 让你更舒服地读论文。导入 PDF，第一段译好就能开始读。遇到难句，展开原文或对照 PDF，在段落旁划线、记笔记、问 AI。也可以直接读英文原文。
 

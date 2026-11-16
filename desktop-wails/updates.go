@@ -102,7 +102,7 @@ func (a *App) checkUpdate(manual, download bool) {
 
 	}
 	client := &http.Client{Timeout: 3 * time.Minute}
-	response, err := client.Get("https://api.github.com/repos/hyskr/easyread/releases?per_page=30")
+	response, err := client.Get("https://api.github.com/repos/hyskr/easyread-wails/releases?per_page=30")
 	if err != nil {
 		if manual {
 			fail(err)

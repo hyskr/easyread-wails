@@ -26,7 +26,7 @@ Wails 导出使用 `easyread-wails://open?...`，Electron 继续使用 `easyread
 
 ## 发布
 
-仓库 Secrets 需要 MAC_SIGN_P12 与 MAC_SIGN_P12_PASSWORD。推送 `wails-v1.4.7` 等标签后，Wails 工作流生成 DMG 和 ZIP 并发布到 hyskr/easyread。签名证书必须跨版本保持一致；更换证书后需手动安装。当前为固定自签名，不包含 Apple 公证。
+仓库 Secrets 需要 MAC_SIGN_P12 与 MAC_SIGN_P12_PASSWORD。推送 `wails-v1.4.7` 等标签后，Wails 工作流生成 DMG 和 ZIP 并发布到 hyskr/easyread-wails。签名证书必须跨版本保持一致；更换证书后需手动安装。当前为固定自签名，不包含 Apple 公证。
 
 ## 本地源码试用
 

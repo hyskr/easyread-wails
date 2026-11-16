@@ -26,7 +26,7 @@
   PR.settingsTabs.updates = {
     render() {
       clearTimeout(timer); timer = setTimeout(refresh, 0);
-      return '<section data-update-page><h3>EasyRead Wails</h3><p>' + PR.t('当前版本') + ' <b data-update-current>…</b></p><p data-update-message role="status"></p><progress style="width:100%" hidden></progress><p data-update-bytes class="hint"></p><button class="btn primary" data-update-check>' + PR.t('检查更新') + '</button> <button class="btn primary" data-update-action hidden></button><p class="set-lead">' + PR.t('更新包下载后会保留，点击重启安装时保存笔记并安装。') + '</p><a href="https://github.com/hyskr/easyread/releases" target="_blank" rel="noopener noreferrer">' + PR.t('查看发布记录') + '</a></section>';
+      return '<section data-update-page><h3>EasyRead Wails</h3><p>' + PR.t('当前版本') + ' <b data-update-current>…</b></p><p data-update-message role="status"></p><progress style="width:100%" hidden></progress><p data-update-bytes class="hint"></p><button class="btn primary" data-update-check>' + PR.t('检查更新') + '</button> <button class="btn primary" data-update-action hidden></button><p class="set-lead">' + PR.t('更新包下载后会保留，点击重启安装时保存笔记并安装。') + '</p><a href="https://github.com/hyskr/easyread-wails/releases" target="_blank" rel="noopener noreferrer">' + PR.t('查看发布记录') + '</a></section>';
     },
     async click(event) {
       const action=event.target.closest('[data-update-action]');

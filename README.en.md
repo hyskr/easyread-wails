@@ -1,6 +1,6 @@
 # EasyRead
 
-This fork uses **Go / Wails** for its default desktop application. [Download Wails](https://github.com/hyskr/easyread/releases/latest) · [Manual upstream synchronization](docs/upstream-sync.md).
+This fork uses **Go / Wails** for its default desktop application. [Download Wails](https://github.com/hyskr/easyread-wails/releases/latest) · [Manual upstream synchronization](docs/upstream-sync.md).
 
 Read papers at your own pace. Drop in a PDF and start reading as soon as the first translated passage appears. Compare a passage with the original page, highlight it, leave a note or ask a question in the margin. You can also read the English original.
 
