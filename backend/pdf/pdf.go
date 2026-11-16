@@ -341,6 +341,21 @@ func extract(ctx context.Context, source, root string, page int) error {
 	return writeJSON(prefix+".chars.json", rows)
 }
 func Prepare(ctx context.Context, ws *store.Workspace) ([]map[string]any, error) {
+	paper, err := ws.Load("paper")
+	if err != nil {
+		return nil, err
+	}
+	if meta, ok := paper["meta"].(map[string]any); ok && meta["source_type"] == "web" {
+		pages := []map[string]any{}
+		if values, ok := meta["pages"].([]any); ok {
+			for _, v := range values {
+				if p, ok := v.(map[string]any); ok {
+					pages = append(pages, p)
+				}
+			}
+		}
+		return pages, nil
+	}
 	if e := secureDirs(ws.Root, "pages", "extract"); e != nil {
 		return nil, e
 	}

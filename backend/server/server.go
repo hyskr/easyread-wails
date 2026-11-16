@@ -467,7 +467,16 @@ func (a *App) get(w http.ResponseWriter, r *http.Request) error {
 		}
 		rel := parts[1]
 		file := ""
-		if rel == "source.pdf" {
+		if rel == "source.html" || rel == "cover.svg" {
+			paper, err := ws.Load("paper")
+			if err != nil {
+				return err
+			}
+			if object(paper["meta"])["source_type"] != "web" {
+				return os.ErrNotExist
+			}
+			file, e = safeFile(ws.Root, rel)
+		} else if rel == "source.pdf" {
 			file, e = ws.SourcePDF()
 		} else if strings.HasPrefix(rel, "extract/") && regexp.MustCompile(`^extract/page-[0-9]{3,6}\.chars\.json$`).MatchString(rel) {
 			if q.Get("selection") == "2" {
@@ -581,9 +590,32 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 		cfg, err := a.Config.Save(patch)
 		e = err
 		v = engines.ChatModels(cfg)
+	case "/api/library/ask":
+		cfg, err := a.Config.Load()
+		if err != nil {
+			return err
+		}
+		v, e = chat.SearchLibrary(r.Context(), a.Library, cfg, b)
 	case "/api/import-url", "/api/import-arxiv":
+		kind := text(b["kind"])
+		if kind != "" && kind != "auto" && kind != "web" && kind != "pdf" {
+			return fmt.Errorf("unknown import type")
+		}
+		if kind != "pdf" {
+			if id, err := store.WebID(text(b["ref"])); err == nil {
+				if ws, err := a.Library.Workspace(id); err == nil {
+					return a.importResult(w, ws, false, b)
+				}
+			}
+		}
+		if text(b["kind"]) == "web" {
+			return a.importWeb(w, r, b)
+		}
 		data, name, meta, err := importer.Fetch(r.Context(), text(b["ref"]))
 		if err != nil {
+			if text(b["kind"]) != "pdf" && importer.WebFallbackAllowed(text(b["ref"])) {
+				return a.importWeb(w, r, b)
+			}
 			return err
 		}
 		ws, fresh, err := a.Library.ImportPDF(data, name, meta)

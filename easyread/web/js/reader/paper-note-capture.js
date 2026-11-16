@@ -10,7 +10,7 @@
     PR.paperNoteEditor.insertSources([{ anchor: id, quote: PR.fullText(element), quoteHTML: html }]).catch(error => PR.toast(error.message));
   };
   PR.capturePaperQuote = function (el, range) {
-    const block = el.closest('.blk'), type = PR.blockById[block.dataset.id]?.type;
+    const block = el.closest('.blk'), type = PR.blockById[block?.dataset.id]?.type;
     const holder = document.createElement('div');
     if (type === 'table' || type === 'figure') holder.appendChild(block.cloneNode(true));
     else {
@@ -31,13 +31,14 @@
         ancestor = ancestor.parentElement;
       }
     }
+    holder.querySelectorAll('[hidden]').forEach(node => node.remove());
     holder.querySelectorAll('.katex').forEach(math => {
       const latex = math.querySelector('annotation[encoding="application/x-tex"]')?.textContent;
       if (latex) { const span = document.createElement('span'); span.dataset.type = 'inline-math'; span.dataset.latex = latex; math.replaceWith(span); }
     });
     holder.querySelectorAll('button, script, style, .pgmark, .math-tag, .pn-source-links, .inline-notes, .stale-tag, .en-title, .num, .figure-translation-label, .fig-generate').forEach(node => node.remove());
     if (type === 'table' || type === 'figure') holder.querySelectorAll(PR.isEnEl(el) ? '.zh' : '.en').forEach(node => node.remove());
-    holder.querySelectorAll('img').forEach(image => { image.src = new URL(image.getAttribute('src'), document.baseURI).href; image.removeAttribute('loading'); });
+    holder.querySelectorAll('img').forEach(image => { image.src = new URL(image.getAttribute('src'), el.ownerDocument.baseURI).href; image.removeAttribute('loading'); });
     return holder.innerHTML;
   };
 })(window.PR);

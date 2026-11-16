@@ -122,9 +122,17 @@ func run(args []string) error {
 			}
 			data, name, meta, er := importer.Fetch(ctx, arg)
 			if er != nil {
-				return er
+				if !importer.WebFallbackAllowed(arg) {
+					return er
+				}
+				snapshot, webMeta, blocks, webErr := importer.FetchWeb(ctx, arg)
+				if webErr != nil {
+					return webErr
+				}
+				ws, fresh, e = lib.ImportWeb(arg, snapshot, webMeta, blocks)
+			} else {
+				ws, fresh, e = lib.ImportPDF(data, name, meta)
 			}
-			ws, fresh, e = lib.ImportPDF(data, name, meta)
 		}
 		if e != nil {
 			return e

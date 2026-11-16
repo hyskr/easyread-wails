@@ -192,7 +192,7 @@ func (l *Library) Summary(w *Workspace) (Object, error) {
 		tr = obj(refreshed["translation"])
 	}
 	out := Object{"id": w.ID()}
-	for _, k := range []string{"title_zh", "title_en", "short_zh", "target", "authors", "affiliation", "date", "venue", "arxiv", "doi"} {
+	for _, k := range []string{"title_zh", "title_en", "short_zh", "target", "authors", "affiliation", "date", "venue", "arxiv", "doi", "source_type", "cover"} {
 		out[k] = get(meta, k, "")
 	}
 	year := meta["year"]
@@ -263,6 +263,9 @@ func (l *Library) Summary(w *Workspace) (Object, error) {
 		out["job"] = summary
 	}
 	out["thumb"] = ""
+	if meta["source_type"] == "web" {
+		out["thumb"] = get(meta, "cover", "/p/"+w.ID()+"/cover.svg")
+	}
 	for _, name := range []string{"page-001.webp", "page-001.png", "page-001.jpg"} {
 		if _, e := os.Stat(filepath.Join(w.Root, "pages", name)); e == nil {
 			out["thumb"] = "/p/" + w.ID() + "/pages/" + name

@@ -143,7 +143,11 @@ func cliRun(ctx context.Context, cfg Object, prompt, cwd string, images []string
 			env = append(env, "CODEBUDDY_INTERNET_ENVIRONMENT=internal")
 		}
 	case "opencode":
-		args = []string{"run", "--format", "json"}
+		title := "EasyRead translation"
+		if truth(c["_chat"]) {
+			title = "EasyRead chat"
+		}
+		args = []string{"run", "--format", "json", "--title", title}
 		for _, p := range images {
 			args = append(args, "--file", p)
 		}

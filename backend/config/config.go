@@ -49,6 +49,9 @@ func expand(p string) string {
 }
 func Defaults(home string) Object {
 	d := Object{"library_dir": filepath.Join(home, "library"), "port": 8765, "engine": "claude", "auto_translate": true, "target": "zh", "translation_instructions": "", "translation_prompt": nil, "translate_figure_text": true, "check_updates": true, "batch_pages": 2, "paper_concurrency": 1, "page_cap": 60, "concurrency": 0, "concurrency_v": 2, "figure_images": Object{"enabled": false, "provider": "codex", "base_url": "", "api_key": "", "model": "", "timeout": 600}, "openai": Object{"preset": "", "base_url": "", "api": "chat", "api_key": "", "model": "", "vision": false, "timeout": 600}, "chat": Object{"models": []any{Object{"id": "opus", "name": "Claude Opus", "engine": "claude", "model": "opus"}, Object{"id": "sonnet", "name": "Claude Sonnet", "engine": "claude", "model": "sonnet"}, Object{"id": "gpt", "name": "GPT", "engine": "codex", "model": ""}}, "default": "opus"}}
+	if target := os.Getenv("EASYREAD_TARGET"); target != "" {
+		d["target"] = target
+	}
 	for _, name := range []string{"claude", "codex", "codebuddy", "zcode", "qoder", "grok", "agy", "cursor", "opencode"} {
 		command := ""
 		switch name {

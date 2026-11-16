@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+var ErrOutputLimit = errors.New("model output truncated by token limit")
+
 type Object = map[string]any
 
 func obj(v any) Object {
@@ -301,13 +303,18 @@ func checkResult(o Object) error {
 		return fmt.Errorf("model error: %v", e)
 	}
 	switch str(o["status"]) {
-	case "failed", "cancelled", "incomplete":
+	case "incomplete":
+		if str(obj(o["incomplete_details"])["reason"]) == "max_output_tokens" {
+			return ErrOutputLimit
+		}
+		return fmt.Errorf("model response incomplete: %v", o["incomplete_details"])
+	case "failed", "cancelled":
 		return fmt.Errorf("model response %s: %v", o["status"], o["incomplete_details"])
 	}
 	for _, v := range arr(o["choices"]) {
 		switch str(obj(v)["finish_reason"]) {
 		case "length":
-			return errors.New("model output truncated by token limit")
+			return ErrOutputLimit
 		case "content_filter":
 			return errors.New("model output blocked by content filter")
 		}

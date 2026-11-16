@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hyskr/easyread/backend/engines"
 	"github.com/hyskr/easyread/backend/pdf"
 	"github.com/hyskr/easyread/backend/store"
 	"os"
@@ -153,6 +154,13 @@ func Missing(ws *store.Workspace, pages []int, data Object) []int {
 // Pages partitions contiguous pages into bounded lanes. A lane preserves document
 // order; merge transactions serialize cross-lane glossary and ID resolution.
 func Pages(ctx context.Context, ws *store.Workspace, cfg Object, pages []int, read bool, report func(int, int, string, Object)) (map[string]any, error) {
+	paper, err := ws.Load("paper")
+	if err != nil {
+		return nil, err
+	}
+	if Obj(paper["meta"])["source_type"] == "web" {
+		return webPages(ctx, ws, cfg, pages, read, report)
+	}
 	failed := Object{}
 	if len(pages) == 0 {
 		return failed, nil
@@ -280,6 +288,7 @@ func Pages(ctx context.Context, ws *store.Workspace, cfg Object, pages []int, re
 				mu.Unlock()
 				todo := append([]int{}, batch...)
 				var err error
+				stageSingle := false
 				for attempt := 0; attempt < 2; attempt++ {
 					if ctx.Err() != nil {
 						return
@@ -288,11 +297,17 @@ func Pages(ctx context.Context, ws *store.Workspace, cfg Object, pages []int, re
 					if attempt > 0 {
 						options["skip_head"] = false
 					}
-					err = oneBatch(ctx, ws, cfg, todo, read, options, func(u Object) {
+					usage := func(u Object) {
 						mu.Lock()
 						defer mu.Unlock()
 						report(done, len(pages), fmt.Sprintf("Processing pages %v", todo), u)
-					})
+					}
+					if stageSingle {
+						err = oneBatch(ctx, ws, cfg, todo, true, options, usage)
+					}
+					if !stageSingle || err == nil {
+						err = oneBatch(ctx, ws, cfg, todo, read, options, usage)
+					}
 					if err == nil {
 						markJobCompleted(ws, todo)
 						mu.Lock()
@@ -304,6 +319,13 @@ func Pages(ctx context.Context, ws *store.Workspace, cfg Object, pages []int, re
 					}
 					if ctx.Err() != nil {
 						return
+					}
+					if errors.Is(err, engines.ErrOutputLimit) {
+						if attempt == 0 && !read && len(todo) == 1 && freshPage(ws, todo[0]) {
+							stageSingle = true
+							continue
+						}
+						break
 					}
 					var missing *MissingPages
 					if errors.As(err, &missing) {
@@ -430,6 +452,13 @@ func oneBatch(ctx context.Context, ws *store.Workspace, cfg Object, pages []int,
 		}
 	}
 	prompt, images := Prompt(ws, cfg, paper, pages, read, todo)
+	listings := map[string]string{}
+	if todo == nil {
+		listings = numberedListings(ws.Root, pages)
+		for key, caption := range listings {
+			prompt += "\nPreserve this code listing as a figure with its original number and caption: " + key + " " + caption
+		}
+	}
 	if todo == nil {
 		if Bool(options["front"]) {
 			prompt = FrontContext(ws.Root, pages[0]) + prompt
@@ -466,6 +495,9 @@ func oneBatch(ctx context.Context, ws *store.Workspace, cfg Object, pages []int,
 		_ = os.MkdirAll(filepath.Join(ws.Root, "extract"), 0700)
 		_ = os.WriteFile(filepath.Join(ws.Root, "extract", fmt.Sprintf("failed-%03d.txt", pages[0])), []byte(raw), 0600)
 		return e
+	}
+	if missing := missingListings(data, listings); len(missing) > 0 {
+		return fmt.Errorf("model omitted numbered figure listings: %s", strings.Join(missing, ", "))
 	}
 	data = repair(ctx, ws, cfg, data, read, usage)
 	if todo != nil {
@@ -596,4 +628,18 @@ func markJobCompleted(ws *store.Workspace, pages []int) {
 		}
 		return nil
 	})
+}
+
+func freshPage(ws *store.Workspace, page int) bool {
+	p, err := ws.Load("paper")
+	if err != nil {
+		return false
+	}
+	for _, v := range List(p["blocks"]) {
+		if Num(Obj(v)["page"]) == page {
+			return false
+		}
+	}
+	tr := Obj(p["translation"])
+	return !contains(ints(tr["done_pages"]), page) && !contains(ints(tr["en_pages"]), page)
 }

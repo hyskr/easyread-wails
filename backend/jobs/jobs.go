@@ -605,7 +605,7 @@ func (m *Manager) run(ctx context.Context, ws *store.Workspace, j Object) error 
 	}
 	scope := tr.Str(j["scope"])
 	check := tr.Bool(j["cap_check"]) || (!planned && (scope == "all" || scope == "body" || scope == ""))
-	if cap > 0 && len(pages) > cap && check && j["confirmed"] != true {
+	if tr.Obj(p["meta"])["source_type"] != "web" && cap > 0 && len(pages) > cap && check && j["confirmed"] != true {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		if ctx.Err() != nil {

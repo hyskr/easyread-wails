@@ -13,6 +13,8 @@ import (
 
 var bareTex = regexp.MustCompile(`\\(?:[dt]?frac|sqrt|sum|prod|int|lim|alpha|beta|gamma|delta|theta|lambda|sigma|omega|mathbb|mathcal|mathbf|mathrm|operatorname|left|right|begin|end|hat|bar|vec|infty|partial|nabla|times|cdot|leq|geq)\b|[A-Za-z][_\^]\{[^{}\n]+\}`)
 
+var algorithmMarkup = regexp.MustCompile(`\\(?:State|Require|Ensure|For|EndFor|While|EndWhile|If|Else|EndIf|Return|Function|EndFunction|KwIn|KwOut|tcp|tcc)\b`)
+
 func textProblems(s string) []string {
 	out := []string{}
 	mask := protected(s)
@@ -34,6 +36,9 @@ func textProblems(s string) []string {
 	}
 	if dollars%2 != 0 {
 		out = append(out, "unpaired $ math delimiter")
+	}
+	if algorithmMarkup.MatchString(prose.String()) {
+		out = append(out, "algorithm markup outside a fenced code block; preserve pseudocode with indentation")
 	}
 	if bareTex.MatchString(prose.String()) {
 		out = append(out, "TeX formula outside math delimiters; wrap complete formula in $TeX$ or a math block")

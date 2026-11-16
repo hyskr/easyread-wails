@@ -236,6 +236,13 @@ func HTMLWithLanguage(ws *store.Workspace, webRoot string, mobile bool, language
 		images[rel] = u
 	}
 	data := M{"paper": paper, "images": images}
+	if obj(paper["meta"])["source_type"] == "web" {
+		snapshot, err := os.ReadFile(filepath.Join(ws.Root, "source.html"))
+		if err != nil {
+			return nil, "", err
+		}
+		data["web_snapshot"] = string(snapshot)
+	}
 	for _, n := range []string{"discussion", "reader", "layout", "item"} {
 		data[n], e = ws.Load(n)
 		if e != nil {

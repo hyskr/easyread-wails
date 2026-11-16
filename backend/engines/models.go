@@ -99,6 +99,14 @@ func modelList(cfg Object) []Object {
 	return out
 }
 func Label(m Object) string {
+	if str(m["model"]) == "" && str(m["engine"]) != "openai" {
+		engine := str(m["engine"])
+		name := str(obj(CLIModels(Object{})[engine])["default"])
+		if name != "" {
+			return "跟随默认（" + name + "）"
+		}
+		return names[engine] + " · 跟随 CLI 默认（型号未确认）"
+	}
 	if str(m["engine"]) == "claude" {
 		if actual := str(seenModels()[str(m["model"])]); actual != "" {
 			return Pretty(actual)
