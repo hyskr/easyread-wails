@@ -168,6 +168,8 @@ Screenshots use a demonstration library. The Japanese sample translates the abst
 - [@88lin](https://github.com/88lin) — figures display at their size on the original page instead of always filling the column ([#47](https://github.com/Edwardxlai/easyread/pull/47))
 
 
+Web articles display inline and block equations in their original layout. Existing highlights that include equations remain anchored when switching languages or opening an offline HTML export.
+
 ### Wails 1.5.1 sidebar and updates
 
 Annotations, paper notes and the mind map have separate tabs. Add them with the sidebar + menu. “Notes and map” opens a vertical split; the layout commands switch between columns and rows. Note actions stay in the tab header, while formatting and rich-text/Markdown controls share one row. Only the note body scrolls. Notes and map nodes navigate to each other; source references retain their markers. Escape closes the + menu first and returns focus to its button.

@@ -26,6 +26,7 @@ p { margin:30px 0 } strong { color:#285b75 } img { max-width:100% }
 </style></head><body><article><h1>Unified blog</h1>
 <p id="intro">Alpha <strong>bold words</strong> and <a href="/reference">linked words</a> finish here. This paragraph explains the inference system, its design, and the evidence supporting its performance claims.</p>
 <p id="second">Second paragraph describes a separate experiment with a matched baseline. It keeps all conditions and qualifications in the original article for the reader to inspect.</p>
+<p id="formula">The loss $L$ scales as $N^{-1}$. The formula is $$\\frac{1}{N}$$.</p>
 <pre><code>x = 1\nprint(x)</code></pre>
 </article></body></html>'''
 ZH = {
@@ -33,6 +34,7 @@ ZH = {
     ' and ': ' 以及 ', 'linked words': '链接词语',
     ' finish here. This paragraph explains the inference system, its design, and the evidence supporting its performance claims.': ' 到此结束。这一段介绍推理系统、系统设计及其性能声明的支持证据。',
     'Second paragraph describes a separate experiment with a matched baseline. It keeps all conditions and qualifications in the original article for the reader to inspect.': '第二段介绍一个具有匹配基线的独立实验，保留原文所有条件和限定，供读者核对。',
+    'The loss $L$ scales as $N^{-1}$. The formula is $$\\frac{1}{N}$$.': '损失 $L$ 随 $N^{-1}$ 变化。公式为 $$\\frac{1}{N}$$。',
 }
 
 
@@ -111,6 +113,12 @@ def run():
                 assert page.evaluate("""() => {const f=document.querySelector('#webSnapshot'),s=f.contentDocument.createElement('script');s.textContent='window.importedScriptRan=true';f.contentDocument.body.append(s);return f.contentWindow.importedScriptRan===undefined}""")
                 assert frame.locator('#intro strong').inner_text() == '加粗词语'
                 assert frame.locator('#intro a').get_attribute('href') == 'https://example.com/reference'
+                assert frame.locator('#formula [data-easyread-side="zh"] .katex').count() == 3
+                assert frame.locator('#formula [data-easyread-side="zh"] .katex-display').count() == 1
+                assert frame.locator('#formula .katex').first.evaluate('(e) => getComputedStyle(e).fontFamily').startswith('KaTeX')
+                page.locator('#bar [data-view="original"]').click()
+                assert frame.locator('#formula [data-easyread-side="en"] .katex').count() == 3
+                page.locator('#bar [data-view="translation"]').click()
                 initial = frame.locator('#intro').evaluate('(e)=>getComputedStyle(e).fontSize')
                 quote = select()
                 mark('green')
@@ -191,7 +199,7 @@ def run():
                 assert sent[-1]['refs'][0]['quote'] == ai_quote
                 assert sent[-1]['refs'][0]['anchor'] == question['anchor']
                 assert page.locator('#webSnapshot').is_visible()
-                page.locator('#chatpanel [data-c="close"]').click()
+                page.locator('.dock-tab-close[data-close="chat"]').click()
                 # Code is also selectable without translating/reformatting its contents.
                 page.evaluate('''() => { const d=PR.webContentWindow().document,p=d.querySelector('pre'),t=p.querySelector('code').firstChild,r=d.createRange();p.scrollIntoView({block:'center'});
                   r.setStart(t,0);r.setEnd(t,5);d.getSelection().removeAllRanges();d.getSelection().addRange(r);p.dispatchEvent(new MouseEvent('mouseup',{bubbles:true})); }''')
@@ -226,6 +234,8 @@ def run():
                 exported = page.request.get(f'{url}/api/p/{ws.id}/export').body()
                 offline = OUT / 'unified-blog.html'; offline.write_bytes(exported)
                 page.goto(offline.as_uri()); page.wait_for_function('!!PR.webContentWindow?.()')
+                assert frame.locator('#formula [data-easyread-side="zh"] .katex').count() == 3
+                assert frame.locator('#formula .katex').first.evaluate('(e) => getComputedStyle(e).fontFamily').startswith('KaTeX')
                 expect(frame.locator('#intro mark.c-yellow').first).to_be_visible()
                 page.locator('[data-web-layout="reader"]').click()
                 assert page.locator('#paper mark[data-note="' + cross['id'] + '"]').count()
