@@ -34,12 +34,18 @@
     if (b.type === "table") content = tableHtml(b);
     else if (b.src) content = '<div class="media-image"><img src="' + PR.esc(PR.imageUrl(b.src)) + '" alt="' + PR.esc(label(b)) + '" decoding="async"><span class="media-image-error" hidden>' + PR.t("图片未能加载，请查看原页") + '</span></div>';
     else content = '<p class="media-empty">' + PR.t("尚无图像，可查看 PDF 原页") + '</p>';
-    return '<div class="media-preview" data-media-block="' + PR.esc(b.id) + '">' + content + '<div class="media-caption">' + PR.esc(caption(b)) + '</div><div class="media-footer"><span>' + PR.t("第 {page} 页", { page: b.page || "?" }) + '</span><button class="btn sm" data-media-go="' + PR.esc(b.id) + '">' + PR.t("定位正文") + '</button>' + (b.page ? '<button class="btn sm" data-media-page="' + Number(b.page) + '" data-media-block="' + PR.esc(b.id) + '">PDF</button>' : "") + '</div></div>';
+    return '<div class="media-preview" data-media-block="' + PR.esc(b.id) + '">' + content + '<div class="media-caption">' + PR.esc(caption(b)) + '</div><div class="media-footer"><span>' + PR.t("第 {page} 页", { page: b.page || "?" }) + '</span><button class="btn sm" data-media-go="' + PR.esc(b.id) + '">' + PR.t("定位正文") + '</button>' + (b.page ? '<button class="btn sm" data-media-page="' + Number(b.page) + '" data-media-block="' + PR.esc(b.id) + '">PDF</button>' : "") + transferActions(b).map((a,i) => '<button class="btn sm" data-media-transfer="' + i + '">' + PR.esc(a.label) + '</button>').join("") + '</div></div>';
   }
   function hover(anchor, b) {
     PR.popover(anchor, '<div class="media-hover"><div class="media-title">' + PR.esc(label(b)) + '</div>' + html(reference(b)) + '<button class="btn sm" data-dock-pin="' + PR.esc(b.id) + '">' + PR.t("在侧栏打开") + '</button></div>', { wide: true });
   }
   document.addEventListener("click", (e) => {
+    const command = e.target.closest("[data-media-transfer]");
+    if (command) {
+      e.preventDefault(); e.stopPropagation();
+      const block = PR.blockById[command.closest(".media-preview").dataset.mediaBlock];
+      transferActions(block)[Number(command.dataset.mediaTransfer)]?.fn(); return;
+    }
     const pin = e.target.closest("[data-dock-pin]");
     if (pin) { e.preventDefault(); PR.pinDockFigure(pin.dataset.dockPin); PR.hidePopover(); return; }
     const go = e.target.closest("[data-media-go]"), page = e.target.closest("[data-media-page]");
@@ -53,5 +59,54 @@
     e.target.hidden = true;
     e.target.nextElementSibling.hidden = false;
   }, true);
-  PR.media = { isMedia, blocks, label, caption, reference, resolve, html, hover, thumbnail };
+  async function originalImage(b) {
+    const res = await fetch(PR.imageUrl(b.src));
+    if (!res.ok) throw Error(PR.t("图片未能加载，请查看原页"));
+    return res.blob();
+  }
+  async function pngImage(b) {
+    const blob = await originalImage(b);
+    if (blob.type === "image/png") return blob;
+    const url = URL.createObjectURL(blob);
+    try {
+      const image = new Image(); image.src = url; await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      canvas.getContext("2d").drawImage(image,0,0);
+      return await new Promise((resolve,reject) => canvas.toBlob(value => value ? resolve(value) : reject(Error(PR.t("无法复制图片"))), "image/png"));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  function transferActions(b) {
+    if (!isMedia(b)) return [];
+    const action = (label, icon, run) => ({label, icon, fn:async () => {
+      try { await run(); } catch (err) { PR.toast(PR.esc(err.message)); }
+    }});
+    if (b.type === "table") return [action(PR.t("复制表格"), "copy", async () => {
+      const {head, rows} = PR.tableParts(b);
+      const cell = value => PR.plain(String(value ?? "")).replace(/[\t\r\n]+/g, " ");
+      const text = [...head,...rows].map(row => row.map(cell).join("\t")).join("\n");
+      if (window.easyreadDesktop?.copyTable) await window.easyreadDesktop.copyTable(text);
+      else await navigator.clipboard.writeText(text);
+      PR.toast(PR.t("已复制"));
+    })];
+    if (!b.src) return [];
+    return [action(PR.t("复制图片"),"copy",async () => {
+      if (window.easyreadDesktop?.copyImage) {
+        const png = await pngImage(b);
+        const data = await new Promise((resolve,reject) => {
+          const file = new FileReader(); file.onload = () => resolve(file.result.split(",")[1]);
+          file.onerror = () => reject(file.error); file.readAsDataURL(png);
+        });
+        await window.easyreadDesktop.copyImage(data); PR.toast(PR.t("已复制")); return;
+      }
+      if (!navigator.clipboard?.write || !window.ClipboardItem) throw Error(PR.t("当前环境不支持复制图片，可另存原图"));
+      await navigator.clipboard.write([new ClipboardItem({"image/png":pngImage(b)})]); PR.toast(PR.t("已复制"));
+    }),action(PR.t("另存原图"),"download",async () => {
+      const blob = await originalImage(b);
+      const ext = ({"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif","image/svg+xml":"svg"})[blob.type.split(";")[0]] ||
+        String(b.src).split(/[?#]/)[0].match(/\.(png|jpe?g|webp|gif|svg)$/i)?.[1] || "img";
+      await PR.saveExport(blob, (label(b)+"-"+b.id).replace(/[\\/:*?"<>|]/g,"") + "." + ext);
+    })];
+  }
+  PR.media = { transferActions, isMedia, blocks, label, caption, reference, resolve, html, hover, thumbnail };
 })(window.PR);

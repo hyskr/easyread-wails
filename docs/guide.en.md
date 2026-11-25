@@ -183,3 +183,7 @@ Annotations, paper notes and the mind map have separate tabs. Add them with the 
 Default shortcuts: PDF O, figures I, annotations M, paper notes S, mind map G, AI chat A, notes and map V, columns H, rows U. Customize them in Settings. Single-key shortcuts do not run while editing text.
 
 After starting an update download, close Settings and continue reading. When downloading and extraction finish, the app saves notes and restarts to install. A failed save stops quitting. Downloaded packages remain cached.
+
+Select translated text and choose **Locate original sentence** to reveal its aligned source. For edited text or papers without sentence alignment, the reader reveals the corresponding paragraph. Select an equation reference and choose **Link to equation** to pick its target by page and preview. Hover to preview, click to jump, or right-click to change or remove the link. Links are saved with annotations and included in offline HTML exports.
+
+The figure or table context menu and sidebar preview offer **Copy image**, **Save original image**, or **Copy table**. Copied tables use tab-separated columns for spreadsheet pasting.

@@ -42,6 +42,7 @@ const MaxUpload = 200 * 1024 * 1024
 var Version = "1.4.6"
 
 type App struct {
+	passageIndex   chat.PassageIndex
 	watch          folderWatch
 	Config         *config.Manager
 	Library        *store.Library
@@ -607,7 +608,7 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		v, e = chat.SearchLibrary(r.Context(), a.Library, cfg, b)
+		v, e = a.passageIndex.SearchLibrary(r.Context(), a.Library, cfg, b)
 	case "/api/import-url", "/api/import-arxiv":
 		kind := text(b["kind"])
 		if kind != "" && kind != "auto" && kind != "web" && kind != "pdf" {
@@ -789,7 +790,7 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 			if len(parts) > 2 {
 				v, e = chat.Mutate(ws, parts[2], b)
 			} else {
-				return chat.Handle(w, r, ws, cfg, b)
+				return a.passageIndex.Handle(w, r, ws, cfg, b)
 			}
 		case "notehelp":
 			return chat.NoteHelp(w, r, ws, cfg, b)

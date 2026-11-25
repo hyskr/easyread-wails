@@ -117,6 +117,7 @@
     for (const n of PR.myNotes()) {
       if (!n.quote || n.unmarked) continue;
       const attrs = { class: "hl c-" + (n.color || "yellow") + (n.style === "underline" ? " s-ul" : "") + (n.kind === "question" ? " q" : ""), "data-note": n.id };
+      if (n.equation) Object.assign(attrs, {class: "hl manual-eq", "data-equation-note": n.id, role: "link", tabindex: "0"});
       for (const p of spans(n)) items.push({ id: n.id, p, attrs });
     }
     for (const e of S.discussion.entries || []) if (e.quote && e.anchor) items.push({ id: e.id, p: e, attrs: { class: "hl agent", "data-card": e.id } });
@@ -229,7 +230,9 @@
       '<button data-s="question" title="' + PR.t("提问（Q）") + '">' + PR.icon("question", "sm") + PR.t("提问") + "</button>" +
       (PR.store.mode === "server" ? '<button data-s="translate" title="' + PR.t("翻译选中文字，学习词义和用法") + '">' + PR.icon("en", "sm") + PR.t("翻译") + "</button>" : "") +
       (PR.canChat && PR.canChat() && PR.feature("chat") ? '<button data-s="chat" title="' + PR.t("把这句引用到问 AI（可以引用多段）") + '">' + PR.icon("sparkle", "sm") + (PR.chatOpen && PR.chatOpen() ? PR.t("引用到对话") : PR.t("问 AI")) + "</button>" : "") +
-      (pendingSel.side || pendingSel.parts || pendingSel.math ? "" : '<button data-s="en" title="' + PR.t("看这段英文") + '">' + PR.icon("en", "sm") + PR.t("原文") + "</button>") +
+      (pendingSel.side || pendingSel.parts || pendingSel.math ? "" : '<button data-s="en" title="' + PR.t("定位对应原句") + '">' + PR.icon("en", "sm") + PR.t("定位对应原句") + "</button>") +
+      (!pendingSel.parts && !pendingSel.math && !PR.webBlockHost?.(pendingSel.anchor) && (S.paper?.blocks || []).some(b => b.type === "math")
+        ? '<button data-s="equation">' + PR.t("关联公式") + '</button>' : "") +
       '<button data-s="copy" title="' + PR.t("复制") + '">' + PR.icon("copy", "sm") + "</button>";
     bar.classList.add("open");
     const r = pendingSel.rect, w = bar.offsetWidth;
@@ -281,7 +284,8 @@
       PR.openPaperNote(); PR.paperNoteEditor.insertSources(sources).catch(error => PR.toast(error.message)); return;
     }
     if (kind === "translate") { PR.translateSelection({ anchor, quote, rect }); return; }
-    if (kind === "en") { PR.toggleEn(anchor, true); return; }
+    if (kind === "equation") { PR.pickEquation(selection); return; }
+    if (kind === "en") { PR.revealOriginalSentence(selection, quoteRanges.get(selection)); return; }
     if (kind === "copy") { navigator.clipboard.writeText(quote).then(() => PR.toast(PR.t("已复制"))); return; }
     if (kind === "chat") { PR.chatAsk({ anchor, quote, ...(parts ? { refs: parts.map(p => ({ anchor: p.anchor, quote: p.quote })) } : {}) }); return; }
     const pen = selectedPen || (PR.prefs.pen === "underline" ? "underline" : "marker");
@@ -320,6 +324,7 @@
     if (!m || getSelection().toString()) return;
     const n = (S.reader.notes || {})[m.dataset.note];
     if (!n) return;
+    if (n.equation) { e.preventDefault(); e.stopImmediatePropagation(); PR.followEquation(n); return; }
     e.stopPropagation();
     PR.noteMarkClick(m, n);
   }, true);

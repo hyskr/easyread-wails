@@ -495,6 +495,10 @@ func sender(w http.ResponseWriter) func(M) error {
 	}
 }
 func Handle(w http.ResponseWriter, r *http.Request, ws *store.Workspace, cfg M, body M) error {
+	return new(PassageIndex).Handle(w, r, ws, cfg, body)
+}
+
+func (index *PassageIndex) Handle(w http.ResponseWriter, r *http.Request, ws *store.Workspace, cfg M, body M) error {
 	text := strings.TrimSpace(str(body["text"]))
 	if text == "" {
 		return errors.New("问题是空的")
@@ -601,7 +605,7 @@ func Handle(w http.ResponseWriter, r *http.Request, ws *store.Workspace, cfg M, 
 			query += "\n" + str(obj(v)["quote"])
 		}
 		lib := &store.Library{Root: filepath.Dir(ws.Root)}
-		found, usage, e = retrieve(r.Context(), lib, selected, query, ec, work)
+		found, usage, e = index.retrieve(r.Context(), lib, selected, query, ec, work)
 		if e != nil {
 			_ = send(M{"error": clip(e.Error(), 500)})
 			return nil

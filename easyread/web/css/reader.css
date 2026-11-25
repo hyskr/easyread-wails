@@ -315,3 +315,8 @@ textarea.editor { display: block; width: 100%; resize: none; overflow: hidden; b
 .ref-tools a, .ref-tools summary { color: var(--accent); cursor: pointer; text-decoration: none; }
 .ref-tools a:hover { text-decoration: underline; }
 .ref-tools details a { display: block; margin: .3em 0; color: var(--ink-2); }
+
+#paper mark.manual-eq { cursor: pointer; color: var(--accent); background: transparent; text-decoration: underline dotted; }
+.equation-picker { max-width: min(34rem, 90vw); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px; }
+.equation-picker select { display: block; max-width: 100%; margin-block: 8px; }
+.equation-picker > div:not(.actions) { overflow-x: auto; }

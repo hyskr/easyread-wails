@@ -48,81 +48,48 @@ func searchTerms(s string) map[string]int {
 	}
 	return out
 }
-func libraryPassages(lib *store.Library, allowed map[string]M) ([]passage, int, error) {
-	spaces, err := lib.All()
-	if err != nil {
-		return nil, 0, err
-	}
+func paperPassages(id string, paper, reader M) []passage {
 	rows := []passage{}
-	empty := 0
-	for _, ws := range spaces {
-		if _, ok := allowed[ws.ID()]; !ok {
+	for _, v := range arr(paper["blocks"]) {
+		b := obj(v)
+		anchor := str(b["id"])
+		if anchor == "" || b["type"] == "heading" || b["type"] == "reference" {
 			continue
 		}
-		paper, err := ws.Load("paper")
-		if err != nil {
-			continue
+		original := str(b["en"])
+		if original == "" {
+			original = str(b["caption_en"])
 		}
-		reader, err := ws.Load("reader")
-		if err != nil {
-			continue
+		translated := str(b["zh"])
+		if translated == "" {
+			translated = str(b["caption_zh"])
 		}
-		meta := obj(paper["meta"])
-		title := str(meta["display_title"])
-		if title == "" {
-			title = str(meta["title_zh"])
+		if b["type"] == "list" {
+			for _, v := range arr(b["items"]) {
+				it := obj(v)
+				original += "\n" + str(it["en"])
+				translated += "\n" + str(it["zh"])
+			}
 		}
-		if title == "" {
-			title = str(meta["title_en"])
+		if edit, ok := obj(obj(reader["edits"])[anchor])["zh"].(string); ok {
+			translated = edit
 		}
-		if title == "" {
-			title = ws.ID()
-		}
-		before := len(rows)
-		for _, v := range arr(paper["blocks"]) {
-			b := obj(v)
-			anchor := str(b["id"])
-			if anchor == "" || b["type"] == "heading" || b["type"] == "reference" {
+		seen := map[string]bool{}
+		for _, text := range []string{original, translated} {
+			if seen[text] {
 				continue
 			}
-			original := str(b["en"])
-			if original == "" {
-				original = str(b["caption_en"])
-			}
-			translated := str(b["zh"])
-			if translated == "" {
-				translated = str(b["caption_zh"])
-			}
-			if b["type"] == "list" {
-				for _, v := range arr(b["items"]) {
-					it := obj(v)
-					original += "\n" + str(it["en"])
-					translated += "\n" + str(it["zh"])
+			seen[text] = true
+			runes := []rune(text)
+			for start := 0; start < len(runes); start += 900 {
+				excerpt := strings.TrimSpace(string(runes[start:min(start+900, len(runes))]))
+				if excerpt != "" {
+					rows = append(rows, passage{M{"paper": id, "anchor": anchor, "text": excerpt}, searchTerms(excerpt)})
 				}
 			}
-			if edit, ok := obj(obj(reader["edits"])[anchor])["zh"].(string); ok {
-				translated = edit
-			}
-			seen := map[string]bool{}
-			for _, text := range []string{original, translated} {
-				if seen[text] {
-					continue
-				}
-				seen[text] = true
-				runes := []rune(text)
-				for start := 0; start < len(runes); start += 900 {
-					excerpt := strings.TrimSpace(string(runes[start:min(start+900, len(runes))]))
-					if excerpt != "" {
-						rows = append(rows, passage{M{"paper": ws.ID(), "title": title, "anchor": anchor, "text": excerpt}, searchTerms(excerpt)})
-					}
-				}
-			}
-		}
-		if before == len(rows) {
-			empty++
 		}
 	}
-	return rows, empty, nil
+	return rows
 }
 func rankPassages(rows []passage, query string) []any {
 	keys := searchTerms(query)
@@ -174,7 +141,7 @@ func rankPassages(rows []passage, query string) []any {
 	return out
 }
 
-func scopedCatalog(lib *store.Library, scope M) (map[string]M, bool, error) {
+func scopeFilter(scope M) (func(string, M) bool, bool, error) {
 	picked := map[string]bool{}
 	manual := scope["papers"] != nil
 	if manual {
@@ -194,39 +161,24 @@ func scopedCatalog(lib *store.Library, scope M) (map[string]M, bool, error) {
 	if scope["category"] != nil && !ok {
 		return nil, false, fmt.Errorf("分类名称无效")
 	}
-	items, err := lib.List()
-	if err != nil {
-		return nil, false, err
-	}
-	allowed := map[string]M{}
-	for _, item := range items {
-		id := str(item["id"])
+	return func(id string, item M) bool {
 		if manual {
-			if !picked[id] {
-				continue
-			}
-		} else {
-			if item["ai_indexed"] == false {
-				continue
-			}
-			if category != "" {
-				found := false
-				for _, tag := range arr(item["tags"]) {
-					if tag == category || strings.HasPrefix(str(tag), category+"/") {
-						found = true
-						break
-					}
-				}
-				if !found {
-					continue
-				}
+			return picked[id]
+		}
+		if item["ai_indexed"] == false {
+			return false
+		}
+		if category == "" {
+			return true
+		}
+		for _, tag := range arr(item["tags"]) {
+			if tag == category || strings.HasPrefix(str(tag), category+"/") {
+				return true
 			}
 		}
-		allowed[id] = item
-	}
-	return allowed, manual, nil
+		return false
+	}, manual, nil
 }
-
 func selectSources(rows []passage, catalog map[string]M, query string, manual bool) []any {
 	chosen := []any{}
 	rest := []any{}
@@ -263,12 +215,12 @@ func selectSources(rows []passage, catalog map[string]M, query string, manual bo
 	return chosen[:min(len(chosen), 8)]
 }
 
-func retrieve(ctx context.Context, lib *store.Library, scope M, query string, engine M, dir string) (M, M, error) {
-	catalog, manual, err := scopedCatalog(lib, scope)
+func (index *PassageIndex) retrieve(ctx context.Context, lib *store.Library, scope M, query string, engine M, dir string) (M, M, error) {
+	include, manual, err := scopeFilter(scope)
 	if err != nil {
 		return nil, nil, err
 	}
-	rows, empty, err := libraryPassages(lib, catalog)
+	catalog, rows, empty, err := index.snapshot(lib, include)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -283,8 +235,10 @@ func retrieve(ctx context.Context, lib *store.Library, scope M, query string, en
 		hits = selectSources(rows, catalog, query+" "+clip(terms, 500), false)
 	}
 	used := map[string]bool{}
-	for _, v := range hits {
-		s := obj(v)
+	for i, v := range hits {
+		original := obj(v)
+		s := M{"paper": original["paper"], "anchor": original["anchor"], "text": original["text"]}
+		hits[i] = s
 		id := str(s["paper"])
 		item := catalog[id]
 		s["title"] = firstString(str(item["display_title"]), str(item["title_zh"]), str(item["title_en"]), id)
@@ -313,6 +267,10 @@ func evidencePrompt(found M) string {
 }
 
 func SearchLibrary(ctx context.Context, lib *store.Library, cfg, body M) (M, error) {
+	return new(PassageIndex).SearchLibrary(ctx, lib, cfg, body)
+}
+
+func (index *PassageIndex) SearchLibrary(ctx context.Context, lib *store.Library, cfg, body M) (M, error) {
 	query := strings.TrimSpace(str(body["query"]))
 	if query == "" || len([]rune(query)) > 2000 {
 		return nil, fmt.Errorf("请输入 1 到 2000 字的问题")
@@ -327,7 +285,7 @@ func SearchLibrary(ctx context.Context, lib *store.Library, cfg, body M) (M, err
 		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	found, usage, err := retrieve(ctx, lib, body, query, engine, dir)
+	found, usage, err := index.retrieve(ctx, lib, body, query, engine, dir)
 	if err != nil {
 		return nil, err
 	}

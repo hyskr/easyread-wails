@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var version = "1.5.1"
+var version = "1.5.2"
 
 type downloadProgress struct {
 	app             *App
@@ -199,7 +200,9 @@ func (a *App) runUpdate(manual, download bool) {
 		progress := &downloadProgress{app: a, total: r.ContentLength}
 		a.updateProgress("正在下载更新", 0, r.ContentLength)
 		_, err = io.Copy(file, io.TeeReader(r.Body, progress))
-		file.Close()
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
 		if err != nil {
 			fail(err)
 			return
@@ -211,13 +214,8 @@ func (a *App) runUpdate(manual, download bool) {
 
 	}
 	a.updateProgress("正在解压更新", 0, 0)
-	if output, err := exec.Command("ditto", "-x", "-k", zipPath, dir).CombinedOutput(); err != nil {
-		fail(fmt.Errorf("解压失败：%s", output))
-		return
-	}
-	updated := filepath.Join(dir, "EasyRead Wails.app")
-	if _, err := os.Stat(filepath.Join(updated, "Contents", "MacOS", "EasyRead Wails")); err != nil {
-		fail(fmt.Errorf("更新包缺少应用程序：%w", err))
+	if err = unpackUpdate(zipPath, dir); err != nil {
+		fail(err)
 		return
 	}
 	if err = os.WriteFile(filepath.Join(dir, "ready"), []byte(newVersion), 0600); err != nil {
@@ -227,6 +225,79 @@ func (a *App) runUpdate(manual, download bool) {
 	a.installDownloadedUpdate()
 
 }
+
+// Extract into a fresh directory so a partial extraction is never marked ready.
+func unpackUpdate(zipPath, dir string) error {
+	stage, err := os.MkdirTemp(dir, ".unpack-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stage)
+	output, err := exec.Command("ditto", "-x", "-k", zipPath, stage).CombinedOutput()
+	app := "EasyRead Wails.app"
+	if err == nil {
+		var info os.FileInfo
+		info, err = os.Stat(filepath.Join(stage, app, "Contents", "MacOS", "EasyRead Wails"))
+		if err == nil && (!info.Mode().IsRegular() || info.Mode().Perm()&0111 == 0) {
+			err = fmt.Errorf("更新包缺少可执行文件")
+		}
+	}
+	if err != nil {
+		// Keep a usable archive when extraction failed for a local reason (such as a full disk).
+		if readableUpdateZIP(zipPath) {
+			return fmt.Errorf("解压失败，已保留下载包：%w %s", err, output)
+		}
+		if removeErr := os.Remove(zipPath); removeErr != nil {
+			return fmt.Errorf("清理损坏的更新包：%w", removeErr)
+		}
+		return fmt.Errorf("解压失败，请重新下载：%w %s", err, output)
+	}
+	target := filepath.Join(dir, app)
+	if err := os.RemoveAll(target); err != nil {
+		return err
+	}
+	return os.Rename(filepath.Join(stage, app), target)
+}
+
+func readableUpdateZIP(path string) bool {
+	archive, err := zip.OpenReader(path)
+	if err != nil {
+		return false
+	}
+	defer archive.Close()
+	appBinary := false
+	for _, file := range archive.File {
+		if file.Name == "EasyRead Wails.app/Contents/MacOS/EasyRead Wails" && file.Mode().IsRegular() && file.Mode().Perm()&0111 != 0 {
+			appBinary = true
+		}
+		r, err := file.Open()
+		if err != nil {
+			return false
+		}
+		_, err = io.Copy(io.Discard, r)
+		r.Close()
+		if err != nil {
+			return false
+		}
+	}
+	return appBinary
+}
+
+// Both renames stay on the installed application's volume. Keep the old app
+// until the new bundle is in place and Launch Services accepts it.
+const installScript = `while kill -0 "$1" 2>/dev/null; do sleep 1; done
+stage=$(mktemp -d "$(dirname "$3")/.easyread-update.XXXXXX") || { open "$3"; exit 1; }
+if ! ditto "$2" "$stage/new.app"; then rm -rf "$stage"; open "$3"; exit 1; fi
+if ! mv "$3" "$stage/previous.app"; then rm -rf "$stage"; open "$3"; exit 1; fi
+if mv "$stage/new.app" "$3"; then
+    if open "$3"; then rm -rf "$stage"; exit 0; fi
+    mv "$3" "$stage/rejected.app" || exit 1
+fi
+mv "$stage/previous.app" "$3" || exit 1
+rm -rf "$stage"
+open "$3"
+exit 1`
+
 func (a *App) installDownloadedUpdate() {
 	if err := a.InstallUpdate(); err != nil {
 		a.updateProgress("安装更新失败："+err.Error(), 0, 0)
@@ -238,9 +309,5 @@ func (a *App) launchInstaller() error {
 	if a.installDir == "" {
 		return nil
 	}
-	script := `while kill -0 "$1" 2>/dev/null; do sleep 1; done
-backup="$3.previous"
-if ! mv "$3" "$backup"; then open "$4"; exit 1; fi
-if ditto "$2" "$3"; then rm -rf "$backup"; open "$3"; else mv "$backup" "$3"; open "$3"; fi`
-	return exec.Command("/bin/sh", "-c", script, "easyread-update", fmt.Sprint(os.Getpid()), a.installSource, a.installTarget, a.installDir).Start()
+	return exec.Command("/bin/sh", "-c", installScript, "easyread-update", fmt.Sprint(os.Getpid()), a.installSource, a.installTarget).Start()
 }
