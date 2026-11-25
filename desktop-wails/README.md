@@ -1,33 +1,22 @@
-# EasyRead Wails
+# Wails 桌面端
 
-macOS Apple Silicon 体验版，使用 Wails 2 与系统 WebKit，复用 EasyRead 前端并使用原生 Go 后端。独立应用名为 EasyRead Wails；默认使用 ~/EasyRead 数据。
+EasyRead Wails 使用系统 WebKit 和随应用打包的 Go 后端。默认文献数据目录为 `~/EasyRead`。
 
-## 构建
+- `main.go` 启动服务并连接阅读器与原生窗口。
+- `desktop.go` 处理菜单、窗口状态、文件导出与深链接。
+- `exit.go` 协调笔记保存和服务退出。
+- `updates.go` 从本仓库的 Wails Release 下载更新，保存笔记后重启安装。
 
-安装 Go、Xcode Command Line Tools、Node.js 与 Poppler 后，在仓库根目录执行：
+## 源码预览与打包
 
-```sh
-npm ci
-brew install poppler
-./scripts/build_wails.sh
-```
+按[根目录说明](../README.md#run-from-source)安装依赖后运行 `npm start`。开发启动脚本通过 `EASYREAD_WAILS_DEV_ROOT` 指向当前仓库，刷新阅读页即可查看普通 JS、CSS 和 HTML 修改。修改编辑器源码后运行 `npm run build:editor`，修改 Go 代码后运行 `./scripts/build_wails.sh` 并重新启动。
 
-输出：desktop-wails/build/bin/EasyRead Wails.app。
+本地构建应用位于 `desktop-wails/build/bin/EasyRead Wails.app`。运行 `npm run dist` 生成 `dist/wails/EasyRead-Wails-arm64.dmg` 与同名 ZIP。
 
-## 已知限制
+## 发布与更新
 
-当前为 macOS arm64 体验版。Windows/Linux 尚未打包。macOS 支持窗口尺寸记忆、原生菜单、保存后打开文件、退出保存和后台任务退出拦截。GitHub Actions 在 Wails 分支构建签名包，推送 wails-v* 标签发布。应用启动时检查 Wails 发布，菜单可手动检查；安装更新前按当前固定签名校验包。本地临时签名版不启用自动安装。完整交互仍需继续回归。请避免两个版本同时编辑同一篇论文。
+推送 `wails-v*` 版本标签后，[Wails 工作流](../.github/workflows/wails-release.yml)测试、构建并发布 macOS arm64 安装包。签名使用仓库 Secrets `MAC_SIGN_P12` 与 `MAC_SIGN_P12_PASSWORD`。当前发布包使用自签名，尚无 Apple 公证。
 
-手动同步流程见 [上游同步](../docs/upstream-sync.md)。不包含任何定时任务。
+软件更新页支持后台下载，缓存位于 `~/Library/Caches/EasyRead Wails/updates/`。Wails 导出的论文来源链接使用 `easyread-wails://open`。
 
-## 来源链接
-
-Wails 导出使用 `easyread-wails://open?...`，Electron 继续使用 `easyread://`。安装 Wails 后重新导出 XMind，即可指向 Wails；旧文件不会自动更新。
-
-## 发布
-
-仓库 Secrets 需要 MAC_SIGN_P12 与 MAC_SIGN_P12_PASSWORD。推送 `wails-v1.4.7` 等标签后，Wails 工作流生成 DMG 和 ZIP 并发布到 hyskr/easyread-wails。签名证书必须跨版本保持一致；更换证书后需手动安装。当前为固定自签名，不包含 Apple 公证。
-
-## 本地源码试用
-
-`EASYREAD_WAILS_DEV_ROOT` 可设为仓库绝对路径。此时使用 build/backend/easyread-backend 启动 Go 后端，通过 --web-root 加载源码前端，刷新页面即可查看 js/reader、CSS、HTML 改动；修改 web/src 后仍需 npm run build:editor。数据继续使用 ~/EasyRead，不需要重复生成 DMG。
+[手动同步上游](../docs/upstream-sync.md)
