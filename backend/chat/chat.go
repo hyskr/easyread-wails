@@ -206,9 +206,13 @@ func Mutate(ws *store.Workspace, action string, body M) (M, error) {
 	ts, e := Threads(ws)
 	return M{"threads": ts}, e
 }
-func appendPair(ws *store.Workspace, tid string, u M, text, modelID, model string, usage M) (M, error) {
+func appendPair(ws *store.Workspace, tid string, u M, text, modelID, model string, usage M, found M) (M, error) {
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 	a := M{"id": id("m"), "role": "assistant", "content": text, "at": stamp, "model": model, "anchor": u["anchor"], "note": u["note"], "answer_style": u["answer_style"], "usage": usage}
+	if found != nil {
+		a["sources"] = found["sources"]
+		a["missing"] = found["missing"]
+	}
 	u["role"] = "user"
 	u["at"] = stamp
 	e := ws.Update("chat", func(c M) error {
@@ -574,17 +578,77 @@ func Handle(w http.ResponseWriter, r *http.Request, ws *store.Workspace, cfg M, 
 	}
 	var answer strings.Builder
 	var sendErr error
-	usage, e := engines.StreamChecked(r.Context(), ec, prompt(ws, past, u), ws.Root, imagePaths(ws, append(past, u)), func(s string) error { answer.WriteString(s); sendErr = send(M{"t": s}); return sendErr })
+	work := ws.Root
+	var found, usage M
+	var question string
+	paths := imagePaths(ws, append(past, u))
+	if scope := body["library_scope"]; scope != nil {
+		selected, ok := scope.(map[string]any)
+		if !ok {
+			_ = send(M{"error": "论文选择无效"})
+			return nil
+		}
+		work, e = os.MkdirTemp("", "easyread-chat-")
+		if e != nil {
+			return e
+		}
+		defer os.RemoveAll(work)
+		settings := obj(ec[str(ec["engine"])])
+		settings["lean"] = true
+		delete(settings, "_chat")
+		query := text
+		for _, v := range refs {
+			query += "\n" + str(obj(v)["quote"])
+		}
+		lib := &store.Library{Root: filepath.Dir(ws.Root)}
+		found, usage, e = retrieve(r.Context(), lib, selected, query, ec, work)
+		if e != nil {
+			_ = send(M{"error": clip(e.Error(), 500)})
+			return nil
+		}
+		if e = send(M{"sources": found["sources"], "missing": found["missing"]}); e != nil {
+			return nil
+		}
+		u["library_scope"] = scope
+		if len(arr(found["sources"])) == 0 && len(paths) == 0 && len(refs) == 0 && len(documents) == 0 && str(u["quote"]) == "" {
+			answer.WriteString("没有找到相关段落")
+			_ = send(M{"t": answer.String()})
+		} else {
+			history := []M{}
+			for _, v := range past[max(0, len(past)-12):] {
+				msg := obj(v)
+				history = append(history, M{"role": msg["role"], "content": msg["content"]})
+			}
+			focus, _ := json.Marshal(M{"question": text, "quote": u["quote"], "references": refs, "documents": documents, "conversation": history, "answer_style": style})
+			question = evidencePrompt(found) + "\n" + string(focus)
+		}
+	} else {
+		question = prompt(ws, past, u)
+	}
+	if question != "" {
+		var used M
+		used, e = engines.StreamChecked(r.Context(), ec, question, work, paths, func(s string) error { answer.WriteString(s); sendErr = send(M{"t": s}); return sendErr })
+		if usage == nil {
+			usage = used
+		} else {
+			for k, v := range used {
+				n, _ := v.(float64)
+				old, _ := usage[k].(float64)
+				usage[k] = old + n
+			}
+		}
+	}
+
 	if e != nil {
 		if (r.Context().Err() != nil || sendErr != nil) && answer.Len() > 0 {
 			u["note"] = nil
-			_, se := appendPair(ws, tid, u, answer.String()+"\n\n（已停止）", str(m["id"]), model, usage)
+			_, se := appendPair(ws, tid, u, answer.String()+"\n\n（已停止）", str(m["id"]), model, usage, found)
 			retained = se == nil
 		}
 		_ = send(M{"error": clip(e.Error(), 500)})
 		return nil
 	}
-	a, e := appendPair(ws, tid, u, answer.String(), str(m["id"]), model, usage)
+	a, e := appendPair(ws, tid, u, answer.String(), str(m["id"]), model, usage, found)
 	if e != nil {
 		_ = send(M{"error": e.Error()})
 		return nil

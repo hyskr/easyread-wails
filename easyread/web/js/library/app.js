@@ -177,6 +177,7 @@
     PR.$("#viewTitle").textContent = L.tag ? PR.catTree.label(L.tag) : L.view === "all" ? PR.t("全部论文") : view[1];
     PR.$("#count").textContent = PR.t("{n} 篇", { n: list.length });
     PR.renderBatch && PR.renderBatch(list);
+    L.renderAiActions?.();
     PR.renderStopAll && PR.renderStopAll();
     const status = L.loadStatus !== "ready" && L.items.length ? '<div class="up-status" role="status">' + loadHtml() + "</div>" : "";
     PR.$("#list").innerHTML = status + (list.length ? list.map(rowHtml).join("") : emptyHtml());
@@ -267,18 +268,26 @@
     const r = e.target.closest(".row");
     if (!r) return;
     e.preventDefault();
-    L.select(r.dataset.id);
     PR.rowMenu && PR.rowMenu(r.dataset.id, { x: e.clientX, y: e.clientY });
   });
   PR.$("#q").addEventListener("input", PR.debounce((e) => { L.q = e.target.value; L.render(); }, 120));
   PR.$("#sort").addEventListener("change", (e) => { L.sort = e.target.value; PR.ls.set("easyread-sort", L.sort); L.render(); });
 
   document.addEventListener("keydown", (e) => {
+    if (e.defaultPrevented) return;
+    const menu = PR.$("#ctxmenu.open");
+    if (menu) {
+      if (!e.target.closest("#ctxmenu, input, textarea, [contenteditable]") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const shortcut = [...menu.querySelectorAll(".kbd")].find(k => k.textContent.toLowerCase() === e.key.toLowerCase());
+        if (shortcut) { e.preventDefault(); shortcut.closest("button").click(); }
+      }
+      return;
+    }
     if (e.target.closest("input, textarea, select, [contenteditable]")) {
       if (e.key === "Escape") e.target.blur();
       return;
     }
-    if (PR.$(".dialog-backdrop.open, #libraryAsk[open]")) return;
+    if (PR.$(".dialog-backdrop.open, dialog[open]")) return;
     const rows = PR.$$(".row");
     const idx = rows.findIndex((r) => r.dataset.id === L.selected);
     if (e.key === "/" || (e.key === "k" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); PR.$("#q").focus(); }

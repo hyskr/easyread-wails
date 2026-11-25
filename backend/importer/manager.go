@@ -178,7 +178,7 @@ func (m *Manager) run(ctx context.Context, s snapshot, body M, generation uint64
 		var fresh bool
 		var e error
 		if en.PDF != "" {
-			ws, fresh, e = m.lib.ImportPath(en.PDF, en.Meta, body["link"] == true)
+			ws, fresh, e = m.lib.ImportPath(en.PDF, en.Meta, body["link"] == true, body["keep_filename"] == true)
 		} else if body["fetch"] == true && first(str(en.Meta["arxiv"]), str(en.Meta["doi"])) != "" {
 			var raw []byte
 			var filename string

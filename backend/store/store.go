@@ -272,11 +272,37 @@ func (w *Workspace) SourcePDF() (string, error) {
 	return linked, nil
 }
 func (w *Workspace) PatchItem(fields Object) (Object, error) {
+	if v, ok := fields["ai_indexed"]; ok {
+		if _, ok := v.(bool); !ok {
+			return nil, errors.New("ai_indexed must be boolean")
+		}
+	}
+	category, add := fields["add_category"]
+	if add {
+		name, ok := category.(string)
+		_, replace := fields["tags"]
+		if !ok || strings.TrimSpace(name) == "" || utf8.RuneCountInString(name) > 120 || replace {
+			return nil, errors.New("invalid category")
+		}
+	}
 	var result Object
 	e := w.Update("item", func(item Object) error {
-		for _, k := range []string{"tags", "status", "starred", "rating", "last_opened", "meta_override", "archived"} {
+		for _, k := range []string{"tags", "status", "starred", "rating", "last_opened", "meta_override", "archived", "ai_indexed"} {
 			if v, ok := fields[k]; ok {
 				item[k] = v
+			}
+		}
+		if add {
+			tags := array(item["tags"])
+			found := false
+			for _, tag := range tags {
+				if tag == category {
+					found = true
+					break
+				}
+			}
+			if !found {
+				item["tags"] = append(tags, category)
 			}
 		}
 		item["updated"] = Now()

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/hyskr/easyread/backend/chat"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -660,6 +661,23 @@ func (m *Manager) run(ctx context.Context, ws *store.Workspace, j Object) error 
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if !read && len(pages) > len(failed) {
+		prefs, _ := m.cfg.Prefs()
+		if tr.Obj(tr.Obj(prefs["ui"])["features"])["category_suggestions"] == true {
+			if _, err := chat.SuggestCategories(ctx, m.lib, ws, cfg, true, prefs, func(extra Object) {
+				mergeUsage(usage, extra)
+				_ = ws.Update("job", func(job Object) error {
+					total := tr.Obj(job["usage_total"])
+					mergeUsage(total, extra)
+					job["usage_total"] = total
+					job["usage"] = copyMap(usage)
+					return nil
+				})
+			}); err != nil {
+				tr.Journal(ws, "分类建议："+err.Error())
+			}
+		}
 	}
 	state, msg, first := "done", "Translation complete", ""
 	if read {

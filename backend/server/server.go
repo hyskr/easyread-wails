@@ -42,6 +42,7 @@ const MaxUpload = 200 * 1024 * 1024
 var Version = "1.4.6"
 
 type App struct {
+	watch          folderWatch
 	Config         *config.Manager
 	Library        *store.Library
 	Jobs           *jobs.Manager
@@ -87,6 +88,10 @@ func New(home string, assets fs.FS) (*App, error) {
 	a.Jobs = jobs.New(lib, cfg)
 	a.Bulk = importer.New(lib, cfg)
 	a.Bulk.OnImported = func(ws *store.Workspace) error { _, err := a.Jobs.Prepare(ws); return err }
+	if err := a.startFolderWatch(); err != nil {
+		a.Close()
+		return nil, err
+	}
 	return a, nil
 }
 func (a *App) Close() {
@@ -273,6 +278,13 @@ func (a *App) get(w http.ResponseWriter, r *http.Request) error {
 		}
 		trash, _ := store.TrashItems(a.Library.Root)
 		response(w, 200, Object{"items": items, "token": a.Token, "jobs": a.Jobs.Status(""), "library_status": a.Status(), "other_device": nil, "engine": cfg["engine"], "engine_label": engines.EngineLabel(cfg), "first_run": a.Config.FirstRun(), "version": Version, "trash": len(trash)})
+		return nil
+	case "/api/fonts":
+		names, err := localFonts(r.Context(), q.Get("fresh") == "1")
+		if err != nil {
+			return err
+		}
+		response(w, 200, Object{"fonts": names})
 		return nil
 	case "/api/config":
 		cfg, e := a.Config.Load()
@@ -515,7 +527,7 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 		if e != nil {
 			return e
 		}
-		ws, fresh, e := a.Library.ImportPDF(b, q.Get("name"), nil)
+		ws, fresh, e := a.Library.ImportPDF(b, q.Get("name"), nil, q.Get("keep_filename") == "1")
 		if e != nil {
 			return e
 		}
@@ -660,7 +672,17 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 		e = err
 		v = Object{"stopped": n}
 	case "/api/migrate/scan":
-		v, e = a.Bulk.Scan(b)
+		scan, err := a.Bulk.Scan(b)
+		if err != nil {
+			return err
+		}
+		if b["source"] == "folder" {
+			scan["watch"] = a.watch.options(text(scan["path"]))
+		}
+		v = scan
+	case "/api/migrate/watch":
+		e = a.configureWatch(b)
+		v = Object{"ok": e == nil}
 	case "/api/migrate/start":
 		v, e = a.Bulk.Start(b)
 	case "/api/migrate/stop":
@@ -771,6 +793,20 @@ func (a *App) post(w http.ResponseWriter, r *http.Request) error {
 			}
 		case "notehelp":
 			return chat.NoteHelp(w, r, ws, cfg, b)
+		case "review-categories":
+			v, e = chat.ReviewCategories(ws, b)
+		case "match-category":
+			v, e = chat.MatchCategory(r.Context(), ws, cfg, b)
+		case "suggest-categories":
+			engine, _, err := engines.EngineConfig(cfg, "")
+			if err != nil {
+				return err
+			}
+			prefs, err := a.Config.Prefs()
+			if err != nil {
+				return err
+			}
+			v, e = chat.SuggestCategories(r.Context(), a.Library, ws, engine, false, prefs, nil)
 		case "translate-selection":
 			v, e = chat.TranslateSelection(r.Context(), ws, cfg, b)
 		case "chat-export":

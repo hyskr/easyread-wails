@@ -64,14 +64,14 @@ func (l *Library) All() ([]*Workspace, error) {
 	}
 	return out, nil
 }
-func (l *Library) ImportPDF(data []byte, filename string, meta Object) (*Workspace, bool, error) {
+func (l *Library) ImportPDF(data []byte, filename string, meta Object, keepFilename ...bool) (*Workspace, bool, error) {
 	if !strings.HasPrefix(string(data), "%PDF") {
 		return nil, false, fmt.Errorf("not a PDF file")
 	}
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
-	return l.create(digest, filename, meta, data, "")
+	return l.create(digest, filename, meta, data, "", keepFilename...)
 }
-func (l *Library) ImportPath(path string, meta Object, link bool) (*Workspace, bool, error) {
+func (l *Library) ImportPath(path string, meta Object, link bool, keepFilename ...bool) (*Workspace, bool, error) {
 	if regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://`).MatchString(path) {
 		return nil, false, fmt.Errorf("only local PDF files supported")
 	}
@@ -100,11 +100,11 @@ func (l *Library) ImportPath(path string, meta Object, link bool) (*Workspace, b
 		return nil, false, fmt.Errorf("not a PDF file")
 	}
 	if !link {
-		return l.ImportPDF(b, filepath.Base(p), meta)
+		return l.ImportPDF(b, filepath.Base(p), meta, keepFilename...)
 	}
-	return l.create(fmt.Sprintf("%x", sha256.Sum256(b)), filepath.Base(p), meta, nil, p)
+	return l.create(fmt.Sprintf("%x", sha256.Sum256(b)), filepath.Base(p), meta, nil, p, keepFilename...)
 }
-func (l *Library) create(digest, filename string, meta Object, data []byte, linked string) (*Workspace, bool, error) {
+func (l *Library) create(digest, filename string, meta Object, data []byte, linked string, keepFilename ...bool) (*Workspace, bool, error) {
 	unlock, e := Lock(l.Root)
 	if e != nil {
 		return nil, false, e
@@ -138,6 +138,9 @@ func (l *Library) create(digest, filename string, meta Object, data []byte, link
 		m["title_en"] = strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 	}
 	files := map[string]Object{"paper": {"schema": Schema, "meta": m, "translation": Object{"scope": "未开始", "done_pages": []any{}, "note": ""}, "glossary": []any{}, "references": []any{}, "blocks": []any{}}, "discussion": EmptyDiscussion(), "reader": EmptyReader(), "item": {"added": Now(), "tags": []any{}, "status": "unread", "starred": false}} // Publish paper last so partially initialized workspaces are never listed.
+	if len(keepFilename) > 0 && keepFilename[0] {
+		files["item"]["meta_override"] = Object{"display_title": filepath.Base(filename)}
+	}
 	for _, name := range []string{"reader", "discussion", "item", "paper"} {
 		if e = WriteJSON(filepath.Join(root, name+".json"), files[name]); e != nil {
 			return nil, false, e
@@ -191,8 +194,8 @@ func (l *Library) Summary(w *Workspace) (Object, error) {
 		}
 		tr = obj(refreshed["translation"])
 	}
-	out := Object{"id": w.ID()}
-	for _, k := range []string{"title_zh", "title_en", "short_zh", "target", "authors", "affiliation", "date", "venue", "arxiv", "doi", "source_type", "cover"} {
+	out := Object{"id": w.ID(), "ai_indexed": get(item, "ai_indexed", true), "category_review": obj(item["category_review"])}
+	for _, k := range []string{"title_zh", "title_en", "short_zh", "display_title", "target", "authors", "affiliation", "date", "venue", "arxiv", "doi", "source_type", "cover"} {
 		out[k] = get(meta, k, "")
 	}
 	year := meta["year"]
